@@ -1,0 +1,43 @@
+{
+  "products": [
+    {
+      "id": "prod_001",
+      "name": "Aero Bottle",
+      "categoryId": "cat_outdoor",
+      "price": 24.99,
+      "currency": "USD",
+      "description": "A lightweight insulated bottle for daily use and short trips.",
+      "inStock": true
+    },
+    {
+      "id": "prod_002",
+      "name": "Trail Pack",
+      "categoryId": "cat_outdoor",
+      "price": 79.0,
+      "currency": "USD",
+      "description": "A compact daypack with weather-resistant fabric and laptop sleeve.",
+      "inStock": true
+    },
+    {
+      "id": "prod_003",
+      "name": "Desk Lamp Pro",
+      "categoryId": "cat_home",
+      "price": 39.5,
+      "currency": "USD",
+      "description": "An adjustable LED lamp with warm and cool lighting modes.",
+      "inStock": false
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_outdoor",
+      "name": "Outdoor",
+      "description": "Gear for travel, exercise, and everyday carry."
+    },
+    {
+      "id": "cat_home",
+      "name": "Home",
+      "description": "Useful products for desks, rooms, and simple living."
+    }
+  ]
+}

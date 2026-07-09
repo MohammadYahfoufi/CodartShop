@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { ChatWidget } from '../components/chat-widget';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: "Codart — Future-ready tech",
-    template: "%s — Codart",
+    default: 'Codart — Future-ready tech',
+    template: '%s — Codart',
   },
   description:
-    "Curated technology for better work, play, and everything in between.",
+    'Curated technology for better work, play, and everything in between.',
 };
 
 export default function RootLayout({
@@ -17,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <ChatWidget />
+      </body>
     </html>
   );
 }
