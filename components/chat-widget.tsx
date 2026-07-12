@@ -62,6 +62,10 @@ export default function ChatWidget() {
     [],
   );
 
+  const hasSentFirstQuestion = messages.some(
+    (message) => message.role === 'user',
+  );
+
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -215,18 +219,20 @@ export default function ChatWidget() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="mb-3 flex flex-wrap gap-2">
-              {quickPrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => setInput(prompt)}
-                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
+            {!hasSentFirstQuestion && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {quickPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => setInput(prompt)}
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <form
               onSubmit={handleSend}

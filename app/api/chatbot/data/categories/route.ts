@@ -1,4 +1,4 @@
-import { loadCatalogForEndpoint } from '@/lib/data-tool';
+import { loadCatalogForEndpoint } from '@/lib/chatbot/data-tool';
 import { NextResponse } from 'next/server';
 
 export async function GET() {

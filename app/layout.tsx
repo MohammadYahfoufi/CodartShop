@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ChatWidget } from '../components/chat-widget';
+import ChatWidget from '../components/chat-widget';
 import './globals.css';
 
 export const metadata: Metadata = {

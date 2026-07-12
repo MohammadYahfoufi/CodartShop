@@ -52,9 +52,14 @@ export async function getToolContext(message: string) {
   const results: Array<{ source: string; data: unknown }> = [];
 
   for (const task of tasks) {
-    const endpoint = `${baseUrl}/api/data/${task}`;
+    const endpoint = `${baseUrl}/api/chatbot/data/${task}`;
     const response = await fetch(endpoint, { cache: 'no-store' });
-    if (!response.ok) continue;
+    if (!response.ok) {
+      console.warn(
+        `Catalog endpoint request failed for ${task}: ${response.status}`,
+      );
+      continue;
+    }
     results.push({ source: endpoint, data: await response.json() });
   }
 
