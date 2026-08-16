@@ -2,49 +2,54 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { createSupabaseBrowserClient, isBrowserAuthConfigured } from "@/lib/supabase-browser";
 import { realtimeTopics } from "@/lib/realtime-topics";
-import type { OrderStatus } from "@/lib/types";
+import { orderStatusLabels } from "@/lib/order-status";
+import type { AccountOrder, OrderStatus } from "@/lib/types";
 
-type TrackedOrder = { id: string; status: OrderStatus; created_at: string; updated_at: string; total: number; delivery_area: string; order_items: Array<{ id: number; product_title: string; quantity: number }> };
 const stages: Array<{ status: OrderStatus; label: string; copy: string }> = [
   { status: "pending", label: "Pending", copy: "We received your order." },
   { status: "confirmed", label: "Confirmed", copy: "Your order is being prepared." },
   { status: "shipped", label: "On the way", copy: "Your order has left for delivery." },
   { status: "delivered", label: "Delivered", copy: "Your order has arrived." },
 ];
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export function OrderTracker() {
-  const searchParams = useSearchParams();
-  const [orderId, setOrderId] = useState(searchParams.get("order") ?? "");
-  const [phone, setPhone] = useState("");
-  const [order, setOrder] = useState<TrackedOrder | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const autoLoaded = useRef(false);
-
-  const loadOrder = useCallback(async () => {
-    setLoading(true); setError("");
-    try { const response = await fetch("/api/orders/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, phone }), cache: "no-store" }); const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "Unable to track order."); setOrder(result.order); }
-    catch (caught) { setOrder(null); setError(caught instanceof Error ? caught.message : "Unable to track order."); }
-    finally { setLoading(false); }
-  }, [orderId, phone]);
-  function submit(event: FormEvent) { event.preventDefault(); void loadOrder(); }
+  const requestedOrder = useSearchParams().get("order") ?? "";
+  const [user, setUser] = useState<User | null | undefined>(() => isBrowserAuthConfigured ? undefined : null);
+  const [orders, setOrders] = useState<AccountOrder[] | null | undefined>(() => isBrowserAuthConfigured ? undefined : []);
+  const [selectedId, setSelectedId] = useState(requestedOrder);
 
   useEffect(() => {
-    if (!orderId || autoLoaded.current) return;
-    autoLoaded.current = true;
-    void loadOrder();
-  }, [loadOrder, orderId]);
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) return;
+    void supabase.auth.getUser().then(async ({ data }) => {
+      setUser(data.user);
+      if (!data.user) { setOrders([]); return; }
+      const response = await fetch("/api/orders", { cache: "no-store" });
+      const result = response.ok ? await response.json() as { orders?: AccountOrder[] } : null;
+      const nextOrders = result?.orders ?? [];
+      setOrders(nextOrders);
+      setSelectedId((current) => current && nextOrders.some((order) => order.id === current) ? current : nextOrders[0]?.id ?? "");
+    });
+  }, []);
 
   useEffect(() => {
-    if (!order?.id) return;
+    if (!user?.id) return;
     const supabase = createSupabaseBrowserClient(); if (!supabase) return;
-    const channel = supabase.channel(realtimeTopics.orderStatus(order.id)).on("broadcast", { event: "status-changed" }, () => void loadOrder()).subscribe();
+    const refresh = () => { void fetch("/api/orders", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result: { orders?: AccountOrder[] } | null) => { if (result?.orders) setOrders(result.orders); }); };
+    const channel = supabase.channel(realtimeTopics.userOrders(user.id)).on("broadcast", { event: "orders-changed" }, refresh).subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [loadOrder, order?.id]);
+  }, [user?.id]);
 
-  const activeIndex = order ? stages.findIndex((stage) => stage.status === order.status) : -1;
-  return <main className="tracking-page"><section className="tracking-shell"><header><p className="eyebrow">Live order tracking</p><h1>Where’s my order?</h1><p>Signed-in customers can open their orders directly. Guest orders also require the checkout phone.</p></header><form className="tracking-form" onSubmit={submit}><label><span>Order number</span><input value={orderId} onChange={(event) => setOrderId(event.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></label><label><span>Phone number <small>guest orders</small></span><input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" autoComplete="tel" placeholder="Your checkout phone" /></label><button type="submit" disabled={loading}>{loading ? "Checking…" : "Track order"}</button></form>{error && <p className="tracking-error" role="alert">{error}</p>}{order && <article className="tracking-result"><div className="tracking-result-head"><div><small>Order</small><strong>#{order.id.slice(0, 8).toUpperCase()}</strong></div><div><small>Total</small><strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.total)}</strong></div></div>{order.status === "cancelled" ? <div className="tracking-cancelled"><strong>Cancelled</strong><span>This order was cancelled. Contact us if you need help.</span></div> : <ol className="tracking-timeline">{stages.map((stage, index) => <li className={index < activeIndex ? "is-complete" : index === activeIndex ? "is-current" : ""} key={stage.status}><i /><div><strong>{stage.label}</strong><span>{stage.copy}</span></div></li>)}</ol>}<div className="tracking-items">{order.order_items.map((item) => <span key={item.id}>{item.product_title}<b>× {item.quantity}</b></span>)}</div></article>}<Link className="auth-back" href="/">← Back to the shop</Link></section></main>;
+  const selected = useMemo(() => orders?.find((order) => order.id === selectedId) ?? null, [orders, selectedId]);
+  const activeIndex = selected ? stages.findIndex((stage) => stage.status === selected.status) : -1;
+
+  if (user === undefined || orders === undefined) return <main className="tracking-page"><section className="tracking-shell tracking-loading">Loading your orders…</section></main>;
+  if (!user) return <main className="tracking-page"><section className="tracking-shell tracking-signed-out"><p className="eyebrow">Order tracking</p><h1>Sign in to see your orders.</h1><p>Your current and previous orders are connected to the account used during checkout.</p><Link className="account-primary" href="/login?next=/track-order">Sign in</Link><Link className="auth-back" href="/">← Back to the shop</Link></section></main>;
+
+  return <main className="tracking-page"><section className="tracking-shell"><header className="tracking-heading"><div><p className="eyebrow">Your purchases</p><h1>Track orders.</h1><p>Choose any current or previous order to see its latest status.</p></div><span>{orders?.length ?? 0} total</span></header>{orders?.length ? <div className="tracking-dashboard"><aside className="tracking-order-list" aria-label="Your orders">{orders.map((order) => <button type="button" className={selectedId === order.id ? "is-active" : ""} onClick={() => setSelectedId(order.id)} key={order.id}><span><strong>#{order.id.slice(0, 8).toUpperCase()}</strong><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(order.created_at))}</small></span><span><b className={`status-${order.status}`}>{orderStatusLabels[order.status]}</b><strong>{money.format(Number(order.total))}</strong></span></button>)}</aside>{selected && <article className="tracking-result"><div className="tracking-result-head"><div><small>Selected order</small><strong>#{selected.id.slice(0, 8).toUpperCase()}</strong></div><div><small>Total</small><strong>{money.format(Number(selected.total))}</strong></div></div>{selected.status === "cancelled" ? <div className="tracking-cancelled"><strong>Cancelled</strong><span>This order was cancelled. Contact us if you need help.</span></div> : <ol className="tracking-timeline">{stages.map((stage, index) => <li className={index < activeIndex ? "is-complete" : index === activeIndex ? "is-current" : ""} key={stage.status}><i /><div><strong>{stage.label}</strong><span>{stage.copy}</span></div></li>)}</ol>}<div className="tracking-items">{selected.order_items.map((item) => <span key={item.id}>{item.product_title}<b>× {item.quantity}</b></span>)}</div></article>}</div> : <div className="tracking-empty"><strong>No orders yet</strong><p>Orders placed while signed in will appear here automatically.</p><Link href="/#products">Browse products</Link></div>}<div className="tracking-links"><Link href="/account">My account</Link><Link href="/">Back to the shop</Link></div></section></main>;
 }
