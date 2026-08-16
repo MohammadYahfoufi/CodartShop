@@ -2,20 +2,22 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./admin-enhancements.css";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
+import { getStorefrontSettings } from "@/lib/storefront-settings";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Codart — Future-ready tech",
-    template: "%s — Codart",
-  },
-  description:
-    "Curated technology for better work, play, and everything in between.",
-  icons: {
-    icon: [{ url: "/codart-logo.png?v=3", type: "image/png" }],
-    shortcut: "/codart-logo.png?v=3",
-    apple: "/codart-logo.png",
-  },
-};
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getStorefrontSettings();
+  return {
+    title: { default: settings.seo_title, template: `%s — ${settings.site_name}` },
+    description: settings.seo_description,
+    icons: {
+      icon: [{ url: "/logo small.jpg?v=1", type: "image/jpeg" }],
+      shortcut: "/logo small.jpg?v=1",
+      apple: "/logo small.jpg?v=1",
+    },
+  };
+}
 
 export default function RootLayout({
   children,

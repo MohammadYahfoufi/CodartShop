@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Storefront } from "@/components/storefront";
 import { getProductById, getProductsPage } from "@/lib/products";
+import { getStorefrontSettings } from "@/lib/storefront-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function ProductPage(props: PageProps<"/products/[id]">) {
 
   if (!product) notFound();
 
-  const productPage = await getProductsPage(1, 24);
+  const [productPage, settings] = await Promise.all([getProductsPage(1, 24), getStorefrontSettings()]);
   const existsInPage = productPage.products.some((item) => item.id === product.id);
 
   return (
@@ -22,6 +23,7 @@ export default async function ProductPage(props: PageProps<"/products/[id]">) {
           : [product, ...productPage.products],
       }}
       focusProductId={product.id}
+      settings={settings}
     />
   );
 }

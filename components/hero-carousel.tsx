@@ -4,23 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowIcon } from "@/components/icons";
-import type { HeroSlide } from "@/lib/types";
+import type { HeroSlide, StorefrontSettings } from "@/lib/types";
 
-const fallbackSlide: HeroSlide = {
-  id: "fallback",
-  title: "Better tech. Less noise.",
-  subtitle: "Future-ready essentials for your desk, your pocket, and everything in between.",
-  image_url: "",
-  image_path: "",
-  cta_label: "Explore the collection",
-  cta_href: "/#products",
-  sort_order: 0,
-  active: true,
-  created_at: "",
-  updated_at: "",
-};
-
-export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
+export function HeroCarousel({ slides, settings }: { slides: HeroSlide[]; settings: StorefrontSettings }) {
+  const fallbackSlide: HeroSlide = {
+    id: "fallback", title: settings.fallback_hero_title, subtitle: settings.fallback_hero_subtitle,
+    image_url: "", image_path: "", cta_label: settings.fallback_hero_cta_label,
+    cta_href: settings.fallback_hero_cta_href, sort_order: 0, active: true, created_at: "", updated_at: "",
+  };
   const visibleSlides = slides.filter((slide) => slide.active).slice(0, 5);
   const items = visibleSlides.length ? visibleSlides : [fallbackSlide];
   const [active, setActive] = useState(0);
@@ -39,7 +30,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       <div className="home-carousel-shade" />
       <div className="home-carousel-art" aria-hidden="true"><span /><span /><b>C</b></div>
       <div className="home-carousel-content" key={slide.id}>
-        <p className="eyebrow">Codart featured</p>
+        <p className="eyebrow">{settings.hero_eyebrow}</p>
         <h1>{slide.title}</h1>
         <p>{slide.subtitle}</p>
         <Link className="carousel-cta" href={slide.cta_href} data-analytics="hero_cta">{slide.cta_label}<ArrowIcon /></Link>

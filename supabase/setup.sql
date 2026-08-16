@@ -88,6 +88,12 @@ create table if not exists public.analytics_daily (
   primary key (day, metric, event_key)
 );
 
+create table if not exists public.storefront_settings (
+  id text primary key check (id = 'main'),
+  settings jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists order_items_order_id_idx on public.order_items(order_id);
 create index if not exists orders_created_at_idx on public.orders(created_at desc);
 create index if not exists orders_user_id_idx on public.orders(user_id, created_at desc);
@@ -108,6 +114,7 @@ alter table public.favorites enable row level security;
 alter table public.cart_items enable row level security;
 alter table public.hero_slides enable row level security;
 alter table public.analytics_daily enable row level security;
+alter table public.storefront_settings enable row level security;
 
 grant select on table public.products to anon, authenticated;
 grant select, insert, update, delete on table public.products to service_role;
@@ -117,7 +124,12 @@ grant select, insert, update, delete on table public.favorites to service_role;
 grant select, insert, update, delete on table public.cart_items to service_role;
 grant select, insert, update, delete on table public.hero_slides to service_role;
 grant select, insert, update, delete on table public.analytics_daily to service_role;
+grant select, insert, update, delete on table public.storefront_settings to service_role;
 grant usage, select on sequence public.order_items_id_seq to service_role;
+
+insert into public.storefront_settings (id, settings)
+values ('main', '{}'::jsonb)
+on conflict (id) do nothing;
 
 create or replace function public.increment_analytics_batch(events jsonb)
 returns void

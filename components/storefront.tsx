@@ -36,6 +36,7 @@ import type {
   OrderReceipt,
   PaginatedProducts,
   Product,
+  StorefrontSettings,
 } from "@/lib/types";
 
 type StorefrontProps = {
@@ -45,6 +46,7 @@ type StorefrontProps = {
   initialPanelOpen?: boolean;
   focusProductId?: string;
   heroSlides?: HeroSlide[];
+  settings: StorefrontSettings;
 };
 
 const emptyDetails: CheckoutDetails = { name: "", email: "", phone: "", address: "", area: "beirut", paymentMethod: "cash-on-delivery", note: "" };
@@ -94,6 +96,7 @@ export function Storefront({
   initialPanelOpen = false,
   focusProductId,
   heroSlides = [],
+  settings,
 }: StorefrontProps) {
   const [productPage, setProductPage] = useState(initialPage);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -326,8 +329,8 @@ export function Storefront({
   );
   const catalogLoading = productsLoading || (filter === "favorites" && !hydrated);
   const searchResults = query.trim() ? filtered.slice(0, 5) : [];
-  const whatsappNumber =
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") ?? "";
+  const whatsappNumber = settings.whatsapp_number.replace(/\D/g, "") ||
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") || "";
 
   function openCart(step: "cart" | "details" = "cart") {
     setCheckoutStep(step);
@@ -484,16 +487,16 @@ export function Storefront({
   return (
     <div className="site-shell">
       <header className="site-header">
-        <Link href="/" className="brand" aria-label="Codart home">
-          <Image className="brand-logo" src="/codart-logo.png" alt="Codart" width={512} height={512} priority />
+        <Link href="/" className="brand" aria-label={`${settings.site_name} home`}>
+          <Image className="brand-logo" src={settings.site_logo_url} alt={settings.site_name} width={512} height={512} priority />
         </Link>
         <nav className="main-nav" aria-label="Main navigation">
-          <Link href="/#products">Shop</Link>
-          <Link href="/#story">Our story</Link>
-          <Link href="/#contact">Contact</Link>
+          <Link href="/#products">{settings.header_shop_label}</Link>
+          <Link href="/#story">{settings.header_story_label}</Link>
+          <Link href="/#contact">{settings.header_contact_label}</Link>
         </nav>
         <div className="header-actions">
-          <Link className="track-trigger" href="/track-order" aria-label="Track an order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14v12H5z" /><path d="M8 7V5h8v2M9 12h6M12 9v6" /></svg><span>Track order</span></Link>
+          <Link className="track-trigger" href="/track-order" aria-label="Track an order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14v12H5z" /><path d="M8 7V5h8v2M9 12h6M12 9v6" /></svg><span>{settings.header_track_label}</span></Link>
           <AuthButton />
           <Link
             href="/favorites"
@@ -501,7 +504,7 @@ export function Storefront({
             aria-label="Open saved products"
           >
             <HeartIcon filled={favoriteIds.length > 0} />
-            <span>Saved</span>
+            <span>{settings.header_saved_label}</span>
             {favoriteIds.length > 0 && <strong>{favoriteIds.length}</strong>}
           </Link>
           <button
@@ -511,7 +514,7 @@ export function Storefront({
             onClick={() => openCart()}
           >
             <BagIcon />
-            <span>Cart</span>
+            <span>{settings.header_cart_label}</span>
             {itemCount > 0 && <strong>{itemCount}</strong>}
           </button>
         </div>
@@ -533,13 +536,13 @@ export function Storefront({
               <span>{favoriteIds.length === 1 ? "saved item" : "saved items"}</span>
             </div>
           </section>
-        ) : <HeroCarousel slides={heroSlides} />}
+        ) : <HeroCarousel slides={heroSlides} settings={settings} />}
 
         <section className={`products-section ${filter === "favorites" ? "saved-products-section" : ""}`} id="products">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">{filter === "favorites" ? "Your saved products" : "The collection"}</p>
-              <h2>{filter === "favorites" ? "Favorites." : "Tools worth using."}</h2>
+              <p className="eyebrow">{filter === "favorites" ? "Your saved products" : settings.catalog_eyebrow}</p>
+              <h2>{filter === "favorites" ? "Favorites." : settings.catalog_title}</h2>
             </div>
             <div className="product-search" onFocus={() => setSearchFocused(true)} onBlur={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget)) setSearchFocused(false);
@@ -547,7 +550,7 @@ export function Storefront({
               <label className="search-box">
                 <SearchIcon />
                 <span className="sr-only">Search products</span>
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the collection" autoComplete="off" role="combobox" aria-expanded={searchFocused && Boolean(query.trim())} aria-controls="product-search-results" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={settings.catalog_search_placeholder} autoComplete="off" role="combobox" aria-expanded={searchFocused && Boolean(query.trim())} aria-controls="product-search-results" />
                 {query && <button type="button" className="search-clear" onClick={() => setQuery("")} aria-label="Clear search"><CloseIcon /></button>}
               </label>
               {searchFocused && query.trim() && (
@@ -644,10 +647,12 @@ export function Storefront({
           )}
         </section>
 
-        {filter === "all" && <section className="story-section" id="story">
-          <p className="eyebrow">Why Codart</p>
-          <h2>We believe good technology should feel simple.</h2>
-          <p>So we skip the endless catalog and choose a focused collection of products that earn their place in your day.</p>
+        {filter === "all" && <section className={`story-section ${settings.story_image_url ? "has-story-image" : ""}`} id="story">
+          {settings.story_image_url && <Image className="story-background" src={settings.story_image_url} alt="" fill sizes="100vw" />}
+          <div className="story-overlay" />
+          <p className="eyebrow">{settings.story_eyebrow}</p>
+          <h2>{settings.story_title}</h2>
+          <p>{settings.story_body}</p>
           <div className="story-line" />
         </section>}
       </main>
@@ -655,26 +660,26 @@ export function Storefront({
       <footer className="site-footer" id="contact">
         <div className="footer-main">
           <div className="footer-brand">
-            <Link href="/" className="brand" aria-label="Codart home"><Image className="brand-logo" src="/codart-logo.png" alt="Codart" width={512} height={512} /></Link>
-            <p>Useful technology, carefully selected. No endless catalog—just products worth bringing into your day.</p>
+            <Link href="/" className="brand" aria-label={`${settings.site_name} home`}><Image className="brand-logo" src={settings.site_logo_url} alt={settings.site_name} width={512} height={512} /></Link>
+            <p>{settings.footer_description}</p>
           </div>
           <nav className="footer-navigation" aria-label="Footer navigation">
-            <p className="eyebrow">Explore</p>
-            <Link href="/#products">Shop products</Link>
-            <Link href="/favorites">Saved items</Link>
-            <Link href="/track-order">Track order</Link>
-            <Link href="/#story">Our story</Link>
+            <p className="eyebrow">{settings.footer_nav_heading}</p>
+            <Link href="/#products">{settings.footer_shop_label}</Link>
+            <Link href="/favorites">{settings.footer_saved_label}</Link>
+            <Link href="/track-order">{settings.footer_track_label}</Link>
+            <Link href="/#story">{settings.footer_story_label}</Link>
           </nav>
           <div className="footer-contact">
-            <p className="eyebrow">Need a hand?</p>
-            <h2>Let’s talk tech.</h2>
-            <p>Questions about a product, delivery, or your order? Send us a message directly.</p>
-            <a className="footer-whatsapp" data-analytics="whatsapp_contact" href={whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hello Codart! I have a question.")}` : "https://wa.me/"} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /><span>Message us on WhatsApp</span><ArrowIcon /></a>
+            <p className="eyebrow">{settings.footer_contact_eyebrow}</p>
+            <h2>{settings.footer_contact_title}</h2>
+            <p>{settings.footer_contact_body}</p>
+            <a className="footer-whatsapp" data-analytics="whatsapp_contact" href={whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello ${settings.site_name}! I have a question.`)}` : "https://wa.me/"} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /><span>{settings.footer_whatsapp_label}</span><ArrowIcon /></a>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} Codart. All rights reserved.</span>
-          <span>Technology, thoughtfully selected.</span>
+          <span>© {new Date().getFullYear()} {settings.footer_copyright}</span>
+          <span>{settings.footer_tagline}</span>
         </div>
       </footer>
 
