@@ -2,7 +2,7 @@ import "server-only";
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { getSupabaseAdmin, isSupabaseConfigured, isSupabaseTemporarilyUnavailable, markSupabaseUnavailable } from "@/lib/supabase-server";
+import { getSupabaseAdmin, isLocalPersistenceEnabled, isSupabaseConfigured, isSupabaseTemporarilyUnavailable, markSupabaseUnavailable } from "@/lib/supabase-server";
 
 export type AnalyticsEvent = { metric: "page_view" | "click"; key: string; count: number };
 export type AnalyticsRow = { day: string; metric: "page_view" | "click"; event_key: string; event_count: number };
@@ -30,6 +30,7 @@ export async function recordAnalytics(events: AnalyticsEvent[]) {
       console.warn("Analytics is using local fallback:", error);
     }
   }
+  if (!isLocalPersistenceEnabled) return;
   const today = new Date().toISOString().slice(0, 10);
   const rows = await readLocalAnalytics();
   for (const event of events) {

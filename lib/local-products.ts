@@ -3,6 +3,7 @@ import "server-only";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { localCatalog } from "@/lib/catalog";
+import { isLocalPersistenceEnabled } from "@/lib/supabase-server";
 import type { PaginatedProducts, Product } from "@/lib/types";
 
 const dataDirectory = path.join(process.cwd(), "data");
@@ -20,11 +21,13 @@ export async function getManagedLocalProducts(): Promise<Product[]> {
 }
 
 async function saveManagedProducts(products: Product[]) {
+  if (!isLocalPersistenceEnabled) throw new Error("Local product storage is unavailable in production. Use Supabase.");
   await mkdir(dataDirectory, { recursive: true });
   await writeFile(productsFile, `${JSON.stringify(products, null, 2)}\n`, "utf8");
 }
 
 async function saveImage(image: File, productId: string) {
+  if (!isLocalPersistenceEnabled) throw new Error("Local product uploads are unavailable in production. Use Supabase Storage.");
   await mkdir(uploadsDirectory, { recursive: true });
   const filename = `${productId}.webp`;
   await writeFile(path.join(uploadsDirectory, filename), Buffer.from(await image.arrayBuffer()));

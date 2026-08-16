@@ -4,6 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   getSupabaseAdmin,
+  isLocalPersistenceEnabled,
   isSupabaseConfigured,
   isSupabaseTemporarilyUnavailable,
   markSupabaseAvailable,
@@ -25,11 +26,13 @@ async function readLocalSlides(): Promise<HeroSlide[]> {
 }
 
 async function writeLocalSlides(slides: HeroSlide[]) {
+  if (!isLocalPersistenceEnabled) throw new Error("Local banner storage is unavailable in production. Use Supabase Storage.");
   await mkdir(path.dirname(slidesFile), { recursive: true });
   await writeFile(slidesFile, `${JSON.stringify(slides, null, 2)}\n`, "utf8");
 }
 
 async function saveLocalImage(id: string, image: File) {
+  if (!isLocalPersistenceEnabled) throw new Error("Local banner uploads are unavailable in production. Use Supabase Storage.");
   await mkdir(localUploads, { recursive: true });
   const filename = `slide-${id}.webp`;
   await writeFile(path.join(localUploads, filename), Buffer.from(await image.arrayBuffer()));

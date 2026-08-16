@@ -5,6 +5,7 @@ import {
 } from "@/lib/slides";
 import {
   getSupabaseAdmin,
+  isLocalPersistenceEnabled,
   isSupabaseConfigured,
   isSupabaseTemporarilyUnavailable,
   markSupabaseUnavailable,
@@ -33,8 +34,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "Banner images must be WebP and smaller than 5 MB." }, { status: 415 });
     }
     const input = { title, subtitle, cta_label: ctaLabel, cta_href: ctaHref, sort_order: Number.isFinite(sortOrder) ? sortOrder : 0, active: true };
-    if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    if (isLocalPersistenceEnabled && (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable())) {
       return Response.json(await createLocalSlide({ ...input, image }), { status: 201 });
+    }
+    if (!isSupabaseConfigured) {
+      return Response.json({ error: "Supabase Storage is not configured for production uploads." }, { status: 503 });
     }
     try {
       const storedImage = await uploadSlideToSupabase(image);
@@ -43,8 +47,14 @@ export async function POST(request: Request) {
       return Response.json(data, { status: 201 });
     } catch (error) {
       markSupabaseUnavailable();
-      console.warn("Supabase banner upload failed; saving locally:", error);
-      return Response.json(await createLocalSlide({ ...input, image }), { status: 201 });
+      console.warn("Supabase banner upload failed:", error);
+      if (isLocalPersistenceEnabled) {
+        return Response.json(await createLocalSlide({ ...input, image }), { status: 201 });
+      }
+      return Response.json(
+        { error: "Unable to upload the banner to Supabase Storage. Verify the bucket and server secret." },
+        { status: 502 },
+      );
     }
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to create banner." }, { status: 500 });

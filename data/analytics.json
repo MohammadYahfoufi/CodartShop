@@ -3,18 +3,30 @@
     "day": "2026-08-16",
     "metric": "page_view",
     "event_key": "/",
-    "event_count": 19
+    "event_count": 27
   },
   {
     "day": "2026-08-16",
     "metric": "page_view",
     "event_key": "/login",
-    "event_count": 40
+    "event_count": 43
   },
   {
     "day": "2026-08-16",
     "metric": "page_view",
     "event_key": "/favorites",
+    "event_count": 1
+  },
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/account",
+    "event_count": 1
+  },
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/cart",
     "event_count": 1
   }
 ]

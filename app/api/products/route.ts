@@ -2,6 +2,7 @@ import { getProductsPage } from "@/lib/products";
 import { createLocalProduct } from "@/lib/local-products";
 import {
   getSupabaseAdmin,
+  isLocalPersistenceEnabled,
   isSupabaseConfigured,
   isSupabaseTemporarilyUnavailable,
   markSupabaseUnavailable,
@@ -46,11 +47,14 @@ export async function POST(request: Request) {
       return Response.json({ error: "The optimized image must be smaller than 5 MB." }, { status: 413 });
     }
 
-    if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    if (isLocalPersistenceEnabled && (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable())) {
       return Response.json(
         await createLocalProduct({ title, description, price, image }),
         { status: 201 },
       );
+    }
+    if (!isSupabaseConfigured) {
+      return Response.json({ error: "Supabase Storage is not configured for production uploads." }, { status: 503 });
     }
 
     const supabase = getSupabaseAdmin();

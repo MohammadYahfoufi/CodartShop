@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 export const PRODUCT_IMAGES_BUCKET = "CodartlbShop";
+export const isLocalPersistenceEnabled = process.env.NODE_ENV !== "production";
 // Avoid making every storefront interaction wait on an offline project.
 // Updating environment variables requires a server restart, which clears this state.
 const SUPABASE_RETRY_DELAY_MS = 30 * 60_000;
@@ -12,10 +13,14 @@ type SupabaseRuntime = typeof globalThis & {
 };
 
 export function isSupabaseTemporarilyUnavailable() {
+  // Hosted instances must retry Supabase instead of falling back to the
+  // deployment bundle, whose filesystem is read-only.
+  if (!isLocalPersistenceEnabled) return false;
   return ((globalThis as SupabaseRuntime).__codartSupabaseUnavailableUntil ?? 0) > Date.now();
 }
 
 export function markSupabaseUnavailable() {
+  if (!isLocalPersistenceEnabled) return;
   (globalThis as SupabaseRuntime).__codartSupabaseUnavailableUntil =
     Date.now() + SUPABASE_RETRY_DELAY_MS;
 }

@@ -33,6 +33,8 @@ NEXT_PUBLIC_WHATSAPP_NUMBER=9647501234567
 
 Changing the HTML controls the design. A custom SMTP provider is required to replace Supabase's sender name and is also required for reliable production delivery to customers outside the Supabase project team.
 
+The supplied template sends `token_hash` and `type=email` directly to the allowed `/auth/callback` URL. Keep those template variables intact; the callback supports both this server-side email flow and OAuth authorization codes.
+
 Run `npm install`, then `npm run dev`. The storefront is at `/`; the multi-page administration area starts at `/admin`.
 
 Favorites are stored locally for instant use. Guests synchronize with an anonymous device ID; signed-in customers synchronize with their Supabase user ID so saved products follow their account. Checkout validates current prices on the server, stores the order and its line items, then opens WhatsApp with the saved order reference. The admin page lists recent orders and lets you update their status.
