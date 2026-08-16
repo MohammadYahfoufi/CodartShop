@@ -58,6 +58,8 @@ export type AdminOrder = {
   }>;
 };
 
+export type AccountOrder = Pick<AdminOrder, "id" | "total" | "status" | "created_at" | "order_items">;
+
 export type HeroSlide = {
   id: string;
   title: string;

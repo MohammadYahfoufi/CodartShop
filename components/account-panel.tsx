@@ -5,23 +5,98 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { money } from "@/lib/commerce";
 import { createSupabaseBrowserClient, isBrowserAuthConfigured } from "@/lib/supabase-browser";
+import type { AccountOrder } from "@/lib/types";
 
 export function AccountPanel() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null | undefined>(() => isBrowserAuthConfigured ? undefined : null);
+  const [user, setUser] = useState<User | null | undefined>(() =>
+    isBrowserAuthConfigured ? undefined : null,
+  );
+  const [orders, setOrders] = useState<AccountOrder[] | null | undefined>();
+
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     if (!supabase) return;
-    void supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    void supabase.auth.getUser().then(async ({ data }) => {
+      setUser(data.user);
+      if (!data.user) {
+        setOrders([]);
+        return;
+      }
+      try {
+        const response = await fetch("/api/orders", { cache: "no-store" });
+        if (!response.ok) throw new Error("Unable to load orders.");
+        const result = (await response.json()) as { orders?: AccountOrder[] };
+        setOrders(result.orders ?? []);
+      } catch {
+        setOrders(null);
+      }
+    });
   }, []);
+
   async function signOut() {
     const supabase = createSupabaseBrowserClient();
     if (supabase) await supabase.auth.signOut();
-    router.replace("/"); router.refresh();
+    router.replace("/");
+    router.refresh();
   }
-  if (user === undefined) return <main className="account-page"><div className="account-card account-loading">Loading your account…</div></main>;
-  if (!user) return <main className="account-page"><section className="account-card"><Link href="/" className="account-logo"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></Link><p className="eyebrow">Your account</p><h1>You’re browsing<br />as a guest.</h1><p>Sign in to keep favourites linked to you across devices.</p><Link className="account-primary" href="/login?next=/account">Sign in or create account</Link><Link className="auth-back" href="/">← Back to the shop</Link></section></main>;
-  const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split("@")[0] ?? "Codart customer";
-  return <main className="account-page"><section className="account-card"><Link href="/" className="account-logo"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></Link><span className="account-profile-avatar">{String(name).charAt(0).toUpperCase()}</span><p className="eyebrow">Signed in</p><h1>Welcome,<br />{name}.</h1><p className="account-email">{user.email}</p><div className="account-links"><Link href="/favorites"><strong>Saved products</strong><span>Open your favourites →</span></Link><Link href="/cart"><strong>Your cart</strong><span>Continue shopping →</span></Link></div><button type="button" className="account-signout" onClick={signOut}>Sign out</button><Link className="auth-back" href="/">← Back to the shop</Link></section></main>;
+
+  if (user === undefined) {
+    return <main className="account-page"><div className="account-card account-loading">Loading your account…</div></main>;
+  }
+
+  if (!user) {
+    return (
+      <main className="account-page">
+        <section className="account-card">
+          <Link href="/" className="account-logo"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></Link>
+          <p className="eyebrow">Your account</p>
+          <h1>You’re browsing<br />as a guest.</h1>
+          <p>Sign in to keep your cart, favourites, and orders linked across devices.</p>
+          <Link className="account-primary" href="/login?next=/account">Sign in or create account</Link>
+          <Link className="auth-back" href="/">← Back to the shop</Link>
+        </section>
+      </main>
+    );
+  }
+
+  const name = user.user_metadata?.full_name
+    ?? user.user_metadata?.name
+    ?? user.email?.split("@")[0]
+    ?? "Codart customer";
+
+  return (
+    <main className="account-page">
+      <section className="account-card">
+        <Link href="/" className="account-logo"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></Link>
+        <span className="account-profile-avatar">{String(name).charAt(0).toUpperCase()}</span>
+        <p className="eyebrow">Signed in</p>
+        <h1>Welcome,<br />{name}.</h1>
+        <p className="account-email">{user.email}</p>
+        <div className="account-links">
+          <Link href="/favorites"><strong>Saved products</strong><span>Open your favourites →</span></Link>
+          <Link href="/cart"><strong>Your cart</strong><span>Continue shopping →</span></Link>
+        </div>
+        <section className="account-orders" aria-live="polite">
+          <header><strong>Your orders</strong><span>{orders === undefined ? "Loading…" : `${orders?.length ?? 0} recent`}</span></header>
+          {orders === null ? (
+            <p>Order history will appear after the account-data migration is installed.</p>
+          ) : orders?.length ? (
+            <ul>
+              {orders.slice(0, 5).map((order) => (
+                <li key={order.id}>
+                  <span><strong>#{order.id.slice(0, 8).toUpperCase()}</strong><small>{order.status}</small></span>
+                  <span><strong>{money.format(Number(order.total))}</strong><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(order.created_at))}</small></span>
+                </li>
+              ))}
+            </ul>
+          ) : orders !== undefined ? <p>No orders connected to this account yet.</p> : null}
+        </section>
+        <button type="button" className="account-signout" onClick={signOut}>Sign out</button>
+        <Link className="auth-back" href="/">← Back to the shop</Link>
+      </section>
+    </main>
+  );
 }

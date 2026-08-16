@@ -2,6 +2,8 @@
 
 1. Create a Supabase project.
 2. Open **SQL Editor**, paste `supabase/setup.sql`, and run it once. This creates the product, order, order-item, favorites, homepage slideshow, and daily analytics tables, plus their policies, indexes, aggregation function, and the public `CodartlbShop` image bucket.
+
+For a project that was set up before account carts and order history were added, run `supabase/user-data-migration.sql` once in the SQL Editor. New projects only need `supabase/setup.sql`.
 3. Open **Project Settings → API Keys** and add the following to `.env.local`:
 
 ```env
@@ -20,6 +22,16 @@ NEXT_PUBLIC_WHATSAPP_NUMBER=9647501234567
 2. Email magic-link login is enabled by default. Configure a custom SMTP provider before production so customer emails have reliable delivery.
 3. In **Authentication → Providers → Google**, enable Google and paste the Google OAuth client ID and secret. In Google Cloud, use the Supabase callback URL displayed on that provider page as the authorized redirect URI.
 4. Restart the Next.js server after changing `.env.local`. Customers sign in at `/login`; signed-in favourites are stored against their Supabase user ID.
+
+### Branded login email
+
+1. In **Supabase → Authentication → Email Templates**, open **Magic Link**.
+2. Set the subject to `Your secure Codart sign-in link`.
+3. Copy the complete contents of `supabase/email-templates/magic-link.html` into the template body and save it.
+4. In **Authentication → SMTP Settings**, enable custom SMTP and enter the host, port, username, and password supplied by your email provider. Set the sender name to `Codart` and use a verified sender address such as `login@your-domain.com`.
+5. Disable click/email tracking in the SMTP provider because rewritten authentication links can fail.
+
+Changing the HTML controls the design. A custom SMTP provider is required to replace Supabase's sender name and is also required for reliable production delivery to customers outside the Supabase project team.
 
 Run `npm install`, then `npm run dev`. The storefront is at `/`; the multi-page administration area starts at `/admin`.
 

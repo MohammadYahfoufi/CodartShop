@@ -1,4 +1,5 @@
 import { localCatalog } from "@/lib/catalog";
+import { getAuthClaims } from "@/lib/supabase-auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import type { OrderRequest } from "@/lib/types";
 
@@ -7,6 +8,29 @@ type ProductSnapshot = {
   title: string;
   price: number;
 };
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export async function GET() {
+  const claims = await getAuthClaims();
+  const userId = typeof claims?.sub === "string" && uuidPattern.test(claims.sub)
+    ? claims.sub
+    : null;
+  if (!userId) return Response.json({ error: "Sign in is required." }, { status: 401 });
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from("orders")
+      .select("id,total,status,created_at,order_items(id,product_title,unit_price,quantity)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    return Response.json({ orders: data ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.warn("Unable to load account orders:", error instanceof Error ? error.message : error);
+    return Response.json({ error: "Unable to load your orders." }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   let body: OrderRequest;
@@ -45,8 +69,11 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getSupabaseAdmin();
+    const claims = await getAuthClaims();
+    const userId = typeof claims?.sub === "string" && uuidPattern.test(claims.sub)
+      ? claims.sub
+      : null;
     const productIds = [...quantities.keys()];
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const databaseIds = productIds.filter((id) => uuidPattern.test(id));
     const localIds = new Set(productIds.filter((id) => !uuidPattern.test(id)));
     const localProducts: ProductSnapshot[] = localCatalog
@@ -75,6 +102,7 @@ export async function POST(request: Request) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
+        user_id: userId,
         customer_name: name,
         customer_phone: phone,
         customer_note: note,

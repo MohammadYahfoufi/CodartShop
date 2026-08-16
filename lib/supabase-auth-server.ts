@@ -29,11 +29,26 @@ export async function createSupabaseAuthServerClient() {
   });
 }
 
-export async function getAuthClaims() {
+export async function getAuthClaims(): Promise<Record<string, unknown> | null> {
   const supabase = await createSupabaseAuthServerClient();
   if (!supabase) return null;
   const { data, error } = await supabase.auth.getClaims();
-  return error ? null : data?.claims ?? null;
+  if (!error && data?.claims) {
+    return data.claims as Record<string, unknown>;
+  }
+
+  // A freshly exchanged magic-link session can be available before its claims
+  // lookup succeeds. Validate the user with Supabase instead of showing the
+  // signed-out UI for a valid session.
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) return null;
+  return {
+    ...userData.user,
+    sub: userData.user.id,
+    email: userData.user.email ?? "",
+    app_metadata: userData.user.app_metadata ?? {},
+    user_metadata: userData.user.user_metadata ?? {},
+  };
 }
 
 export function isAdminClaims(claims: Record<string, unknown> | null) {

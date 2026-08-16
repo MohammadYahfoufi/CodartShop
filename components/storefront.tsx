@@ -59,6 +59,20 @@ function createVisitorId() {
   });
 }
 
+function mergeCarts(...carts: CartItem[][]) {
+  const merged = new Map<string, CartItem>();
+  for (const cart of carts) {
+    for (const item of cart) {
+      const current = merged.get(item.id);
+      merged.set(item.id, {
+        ...item,
+        quantity: Math.max(item.quantity, current?.quantity ?? 0),
+      });
+    }
+  }
+  return [...merged.values()];
+}
+
 export function Storefront({
   initialPage,
   initialFilter = "all",
@@ -83,14 +97,31 @@ export function Storefront({
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderError, setOrderError] = useState("");
   const visitorIdRef = useRef("");
+  const userIdRef = useRef("");
+  const cartStorageKeyRef = useRef(CART_KEY);
+  const favoritesStorageKeyRef = useRef(FAVORITES_KEY);
   const searchRequestRef = useRef(0);
   const searchMountedRef = useRef(false);
 
   useEffect(() => {
     queueMicrotask(async () => {
+      const authClient = createSupabaseBrowserClient();
+      const { data: authData } = authClient
+        ? await authClient.auth.getUser()
+        : { data: { user: null } };
+      const userId = authData.user?.id ?? "";
+      userIdRef.current = userId;
+
+      const cartStorageKey = userId ? `${CART_KEY}:${userId}` : CART_KEY;
+      const favoritesStorageKey = userId ? `${FAVORITES_KEY}:${userId}` : FAVORITES_KEY;
+      cartStorageKeyRef.current = cartStorageKey;
+      favoritesStorageKeyRef.current = favoritesStorageKey;
+
       const storedCart = readStoredJson<CartItem[]>(
-        CART_KEY,
-        readStoredJson<CartItem[]>(LEGACY_CART_KEY, []),
+        cartStorageKey,
+        userId
+          ? readStoredJson<CartItem[]>(CART_KEY, readStoredJson<CartItem[]>(LEGACY_CART_KEY, []))
+          : readStoredJson<CartItem[]>(LEGACY_CART_KEY, []),
       );
       const normalizedCart = storedCart
         .filter((item) => item?.id && Number.isFinite(item.price))
@@ -99,49 +130,77 @@ export function Storefront({
           quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
         }));
 
-      // Preserve an item added immediately after hydration instead of letting
-      // the delayed storage read replace it with an older cart.
-      setCart((currentCart) =>
-        currentCart.length ? currentCart : normalizedCart,
-      );
-      const storedFavorites = readStoredJson<string[]>(FAVORITES_KEY, []).filter(
+      const storedFavorites = readStoredJson<string[]>(
+        favoritesStorageKey,
+        userId ? readStoredJson<string[]>(FAVORITES_KEY, []) : [],
+      ).filter(
         (id): id is string => typeof id === "string",
       );
-      setFavoriteIds(storedFavorites);
 
       let visitorId = localStorage.getItem(VISITOR_KEY) ?? "";
       if (!visitorId) {
         visitorId = createVisitorId();
         localStorage.setItem(VISITOR_KEY, visitorId);
       }
-      const authClient = createSupabaseBrowserClient();
-      const { data: authData } = authClient ? await authClient.auth.getUser() : { data: { user: null } };
-      visitorIdRef.current = authData.user?.id ?? visitorId;
-      setHydrated(true);
+      visitorIdRef.current = userId || visitorId;
 
-      void fetch("/api/favorites", {
+      const favoritesRequest = fetch("/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ visitorId: visitorIdRef.current, productIds: storedFavorites }),
-      })
-        .then(async (response) => {
-          if (!response.ok) return;
-          const result = (await response.json()) as { productIds?: string[] };
-          if (Array.isArray(result.productIds)) setFavoriteIds(result.productIds);
-        })
-        .catch(() => {
-          // Local favorites remain available while the database is offline.
-        });
+      }).catch(() => null);
+      const cartRequest = userId
+        ? fetch("/api/cart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              items: normalizedCart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+            }),
+          }).catch(() => null)
+        : Promise.resolve(null);
+
+      const [favoritesResponse, cartResponse] = await Promise.all([favoritesRequest, cartRequest]);
+      let syncedFavorites = storedFavorites;
+      if (favoritesResponse?.ok) {
+        const result = (await favoritesResponse.json()) as { productIds?: string[] };
+        if (Array.isArray(result.productIds)) syncedFavorites = result.productIds;
+        if (userId) localStorage.removeItem(FAVORITES_KEY);
+      }
+      let syncedCart = normalizedCart;
+      if (cartResponse?.ok) {
+        const result = (await cartResponse.json()) as { items?: CartItem[] };
+        if (Array.isArray(result.items)) syncedCart = result.items;
+        localStorage.removeItem(CART_KEY);
+        localStorage.removeItem(LEGACY_CART_KEY);
+      }
+
+      // Preserve interactions made while account data was loading and merge
+      // them with the account's server-side state.
+      setCart((currentCart) => mergeCarts(syncedCart, currentCart));
+      setFavoriteIds((currentIds) => [...new Set([...syncedFavorites, ...currentIds])]);
+      setHydrated(true);
     });
   }, []);
 
   useEffect(() => {
-    if (hydrated) localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    if (!hydrated) return;
+    localStorage.setItem(cartStorageKeyRef.current, JSON.stringify(cart));
+    if (!userIdRef.current) return;
+    const timer = window.setTimeout(() => {
+      void fetch("/api/cart", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+        }),
+      });
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [cart, hydrated]);
 
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds));
+      localStorage.setItem(favoritesStorageKeyRef.current, JSON.stringify(favoriteIds));
     }
   }, [favoriteIds, hydrated]);
 
