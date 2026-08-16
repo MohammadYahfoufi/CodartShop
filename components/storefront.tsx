@@ -725,7 +725,7 @@ export function Storefront({
               <div className="cart-footer">
                 <div className="cart-total"><span>Subtotal</span><strong>{money.format(subtotal)}</strong></div>
                 <p>Taxes and delivery, if applicable, are confirmed before payment.</p>
-                <button type="button" className="whatsapp-button" onClick={() => setCheckoutStep("details")}>Continue to order <ArrowIcon /></button>
+                <button type="button" className="cart-checkout-button" onClick={() => setCheckoutStep("details")}><span>Continue to order</span><ArrowIcon /></button>
               </div>
             )}
           </>
