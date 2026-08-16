@@ -1,10 +1,17 @@
 import { localCatalog } from "@/lib/catalog";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { getAuthClaims } from "@/lib/supabase-auth-server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function validVisitorId(value: unknown): value is string {
   return typeof value === "string" && uuidPattern.test(value);
+}
+
+async function resolvedVisitorId(value: unknown) {
+  const claims = await getAuthClaims();
+  if (typeof claims?.sub === "string" && validVisitorId(claims.sub)) return claims.sub;
+  return validVisitorId(value) ? value : null;
 }
 
 async function allowedProductIds(ids: string[]) {
@@ -28,7 +35,8 @@ async function allowedProductIds(ids: string[]) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    if (!validVisitorId(body?.visitorId) || !Array.isArray(body?.productIds) || body.productIds.length > 100) {
+    const visitorId = await resolvedVisitorId(body?.visitorId);
+    if (!visitorId || !Array.isArray(body?.productIds) || body.productIds.length > 100) {
       return Response.json({ error: "Invalid favorites data." }, { status: 400 });
     }
 
@@ -36,7 +44,7 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     const [allowed, existingResult] = await Promise.all([
       allowedProductIds(requested),
-      supabase.from("favorites").select("product_id").eq("visitor_id", body.visitorId),
+      supabase.from("favorites").select("product_id").eq("visitor_id", visitorId),
     ]);
     if (existingResult.error) throw existingResult.error;
 
@@ -49,7 +57,7 @@ export async function POST(request: Request) {
     );
     if (missing.length) {
       const { error } = await supabase.from("favorites").insert(
-        missing.map((productId) => ({ visitor_id: body.visitorId, product_id: productId })),
+        missing.map((productId) => ({ visitor_id: visitorId, product_id: productId })),
       );
       if (error) throw error;
     }
@@ -64,7 +72,8 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    if (!validVisitorId(body?.visitorId) || typeof body?.productId !== "string") {
+    const visitorId = await resolvedVisitorId(body?.visitorId);
+    if (!visitorId || typeof body?.productId !== "string") {
       return Response.json({ error: "Invalid favorite." }, { status: 400 });
     }
     const [productId] = await allowedProductIds([body.productId]);
@@ -72,7 +81,7 @@ export async function PUT(request: Request) {
 
     const { error } = await getSupabaseAdmin()
       .from("favorites")
-      .upsert({ visitor_id: body.visitorId, product_id: productId });
+      .upsert({ visitor_id: visitorId, product_id: productId });
     if (error) throw error;
     return new Response(null, { status: 204 });
   } catch (error) {
@@ -84,13 +93,14 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
-    if (!validVisitorId(body?.visitorId) || typeof body?.productId !== "string") {
+    const visitorId = await resolvedVisitorId(body?.visitorId);
+    if (!visitorId || typeof body?.productId !== "string") {
       return Response.json({ error: "Invalid favorite." }, { status: 400 });
     }
     const { error } = await getSupabaseAdmin()
       .from("favorites")
       .delete()
-      .eq("visitor_id", body.visitorId)
+      .eq("visitor_id", visitorId)
       .eq("product_id", body.productId);
     if (error) throw error;
     return new Response(null, { status: 204 });

@@ -57,3 +57,17 @@ export type AdminOrder = {
     quantity: number;
   }>;
 };
+
+export type HeroSlide = {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  image_path: string;
+  cta_label: string;
+  cta_href: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};

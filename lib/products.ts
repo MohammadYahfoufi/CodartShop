@@ -1,4 +1,8 @@
-import { getLocalProductsPage, localCatalog } from "@/lib/catalog";
+import {
+  getLocalProduct,
+  getLocalProductsPage,
+  getManagedLocalProducts,
+} from "@/lib/local-products";
 import {
   getSupabaseAdmin,
   isSupabaseConfigured,
@@ -16,7 +20,9 @@ function reportSupabaseError(context: string, error: unknown) {
 }
 
 export async function getProducts(): Promise<Product[]> {
-  if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) return [];
+  if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    return getManagedLocalProducts();
+  }
 
   try {
     const { data, error } = await getSupabaseAdmin()
@@ -30,7 +36,7 @@ export async function getProducts(): Promise<Product[]> {
   } catch (error) {
     markSupabaseUnavailable();
     reportSupabaseError("Unable to load products from Supabase", error);
-    return [];
+    return getManagedLocalProducts();
   }
 }
 
@@ -42,7 +48,7 @@ export async function getProductsPage(
   const pageSize = Math.min(24, Math.max(1, requestedPageSize));
   const search = requestedSearch.trim().slice(0, 80);
   if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
-    return getLocalProductsPage(requestedPage, pageSize, search);
+    return await getLocalProductsPage(requestedPage, pageSize, search);
   }
 
   try {
@@ -67,7 +73,7 @@ export async function getProductsPage(
     if (error) throw error;
     markSupabaseAvailable();
     const total = count ?? 0;
-    if (!total && !search) return getLocalProductsPage(requestedPage, pageSize);
+    if (!total && !search) return await getLocalProductsPage(requestedPage, pageSize);
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     if (requested > totalPages) {
@@ -84,12 +90,12 @@ export async function getProductsPage(
   } catch (error) {
     markSupabaseUnavailable();
     reportSupabaseError("Unable to load products from Supabase", error);
-    return getLocalProductsPage(requestedPage, pageSize, search);
+    return await getLocalProductsPage(requestedPage, pageSize, search);
   }
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const localProduct = localCatalog.find((product) => product.id === id);
+  const localProduct = await getLocalProduct(id);
   if (localProduct) return localProduct;
   if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) return null;
 

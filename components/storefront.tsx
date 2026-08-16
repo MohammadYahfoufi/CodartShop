@@ -16,6 +16,9 @@ import {
 } from "@/components/icons";
 import { ProductVisual } from "@/components/product-visual";
 import { ProductGridSkeleton } from "@/components/skeletons";
+import { HeroCarousel } from "@/components/hero-carousel";
+import { AuthButton } from "@/components/auth-button";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   CART_KEY,
   FAVORITES_KEY,
@@ -27,6 +30,7 @@ import {
 import type {
   CartItem,
   CheckoutDetails,
+  HeroSlide,
   OrderReceipt,
   PaginatedProducts,
   Product,
@@ -38,6 +42,7 @@ type StorefrontProps = {
   initialCheckoutStep?: "cart" | "details";
   initialPanelOpen?: boolean;
   focusProductId?: string;
+  heroSlides?: HeroSlide[];
 };
 
 const emptyDetails: CheckoutDetails = { name: "", phone: "", note: "" };
@@ -60,11 +65,12 @@ export function Storefront({
   initialCheckoutStep = "cart",
   initialPanelOpen = false,
   focusProductId,
+  heroSlides = [],
 }: StorefrontProps) {
   const [productPage, setProductPage] = useState(initialPage);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  const [filter, setFilter] = useState<"all" | "favorites">(initialFilter);
+  const filter = initialFilter;
   const [cartOpen, setCartOpen] = useState(initialPanelOpen);
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "details">(
     initialCheckoutStep,
@@ -81,7 +87,7 @@ export function Storefront({
   const searchMountedRef = useRef(false);
 
   useEffect(() => {
-    queueMicrotask(() => {
+    queueMicrotask(async () => {
       const storedCart = readStoredJson<CartItem[]>(
         CART_KEY,
         readStoredJson<CartItem[]>(LEGACY_CART_KEY, []),
@@ -108,13 +114,15 @@ export function Storefront({
         visitorId = createVisitorId();
         localStorage.setItem(VISITOR_KEY, visitorId);
       }
-      visitorIdRef.current = visitorId;
+      const authClient = createSupabaseBrowserClient();
+      const { data: authData } = authClient ? await authClient.auth.getUser() : { data: { user: null } };
+      visitorIdRef.current = authData.user?.id ?? visitorId;
       setHydrated(true);
 
       void fetch("/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visitorId, productIds: storedFavorites }),
+        body: JSON.stringify({ visitorId: visitorIdRef.current, productIds: storedFavorites }),
       })
         .then(async (response) => {
           if (!response.ok) return;
@@ -218,6 +226,7 @@ export function Storefront({
     productPage.page * productPage.pageSize,
     productPage.total,
   );
+  const catalogLoading = productsLoading || (filter === "favorites" && !hydrated);
   const searchResults = query.trim() ? filtered.slice(0, 5) : [];
   const whatsappNumber =
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") ?? "";
@@ -225,17 +234,6 @@ export function Storefront({
   function openCart(step: "cart" | "details" = "cart") {
     setCheckoutStep(step);
     setCartOpen(true);
-  }
-
-  function showFavorites() {
-    setFilter((current) => current === "favorites" ? "all" : "favorites");
-    setSearchFocused(false);
-    requestAnimationFrame(() => {
-      document.getElementById("products")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
   }
 
   function selectSearchResult(product: Product) {
@@ -385,16 +383,16 @@ export function Storefront({
           <Link href="/#contact">Contact</Link>
         </nav>
         <div className="header-actions">
-          <button
-            type="button"
+          <AuthButton />
+          <Link
+            href="/favorites"
             className={`favorite-trigger ${filter === "favorites" ? "is-active" : ""}`}
-            aria-label={filter === "favorites" ? "Show all products" : "Show favorite products"}
-            onClick={showFavorites}
+            aria-label="Open saved products"
           >
             <HeartIcon filled={favoriteIds.length > 0} />
             <span>Saved</span>
             {favoriteIds.length > 0 && <strong>{favoriteIds.length}</strong>}
-          </button>
+          </Link>
           <button
             type="button"
             className="cart-trigger"
@@ -409,28 +407,24 @@ export function Storefront({
       </header>
 
       <main>
-        <section className="hero">
-          <div className="hero-glow hero-glow-one" />
-          <div className="hero-glow hero-glow-two" />
-          <div className="hero-content">
-            <p className="eyebrow">Technology, thoughtfully selected</p>
-            <h1>Better tech.<br /><em>Less noise.</em></h1>
-            <p className="hero-copy">Future-ready essentials for your desk, your pocket, and everything in between.</p>
-            <Link className="primary-button" href="/#products">Explore the collection <ArrowIcon /></Link>
-          </div>
-          <div className="hero-object" aria-hidden="true">
-            <span className="hero-ring ring-one" />
-            <span className="hero-ring ring-two" />
-            <span className="hero-core">C</span>
-          </div>
-          <div className="hero-stats">
-            <span><strong>Curated</strong>Every product, considered</span>
-            <span><strong>Direct</strong>Order in one message</span>
-            <span><strong>Human</strong>Real support, always</span>
-          </div>
-        </section>
+        {filter === "favorites" ? (
+          <section className="saved-hero">
+            <div className="saved-hero-glow" />
+            <div className="saved-hero-copy">
+              <p className="eyebrow">Your personal shortlist</p>
+              <h1>Saved for <em>later.</em></h1>
+              <p>Everything you liked, collected in one quiet place. Compare your picks or move them straight into your cart.</p>
+              <Link className="saved-back-link" href="/#products"><ArrowIcon /> Back to all products</Link>
+            </div>
+            <div className="saved-count" aria-live="polite">
+              <HeartIcon filled />
+              <strong>{hydrated ? favoriteIds.length : "—"}</strong>
+              <span>{favoriteIds.length === 1 ? "saved item" : "saved items"}</span>
+            </div>
+          </section>
+        ) : <HeroCarousel slides={heroSlides} />}
 
-        <section className="products-section" id="products">
+        <section className={`products-section ${filter === "favorites" ? "saved-products-section" : ""}`} id="products">
           <div className="section-heading">
             <div>
               <p className="eyebrow">{filter === "favorites" ? "Your saved products" : "The collection"}</p>
@@ -462,16 +456,16 @@ export function Storefront({
 
           <div className="catalog-status" aria-live="polite">
             <span>
-              {productsLoading
+              {catalogLoading
                 ? query.trim() ? "Searching the catalog…" : "Loading products…"
                 : filter === "favorites"
                   ? `${filtered.length} saved ${filtered.length === 1 ? "product" : "products"}`
                   : `Showing ${visibleStart}–${visibleEnd} of ${productPage.total} ${query.trim() ? "results" : "products"}`}
             </span>
-            {query.trim() && !productsLoading && <strong>Search: “{query.trim()}”</strong>}
+            {query.trim() && !catalogLoading && <strong>Search: “{query.trim()}”</strong>}
           </div>
 
-          {productsLoading ? <ProductGridSkeleton count={productPage.pageSize} /> : filtered.length ? (
+          {catalogLoading ? <ProductGridSkeleton count={Math.min(productPage.pageSize, 6)} /> : filtered.length ? (
             <div className="product-grid">
               {filtered.map((product, index) => {
                 const isFavorite = favoriteIds.includes(product.id);
@@ -482,15 +476,16 @@ export function Storefront({
                     <div className="product-media">
                       <ProductVisual src={product.image_url} alt={product.title} priority={index < 2} />
                       <span className="product-index">{String(index + 1).padStart(2, "0")}</span>
-                      <button type="button" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => toggleFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
+                      <button type="button" data-analytics="favorite_product" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => toggleFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
                     </div>
                     <div className="product-card-body">
-                      <Link href={`/products/${product.id}`}><h3>{product.title}</h3></Link>
+                      <Link href={`/products/${product.id}`} data-analytics="open_product"><h3>{product.title}</h3></Link>
                       <p>{product.description}</p>
                       <div className="product-action">
                         <strong>{money.format(product.price)}</strong>
                         <button
                           type="button"
+                          data-analytics="add_to_cart"
                           className={quantityInCart ? "is-in-cart" : ""}
                           onClick={() => addToCart(product)}
                           aria-label={`Add ${product.title} to cart${quantityInCart ? `, ${quantityInCart} currently in cart` : ""}`}
@@ -508,7 +503,7 @@ export function Storefront({
             <div className="empty-state"><HeartIcon /><h3>{filter === "favorites" ? "Nothing saved yet" : "No products found"}</h3><p>{filter === "favorites" ? "Tap the heart on a product to keep it here." : "Try a different search term."}</p>{filter === "favorites" && <Link className="text-button centered" href="/#products">Browse all products <ArrowIcon /></Link>}</div>
           )}
 
-          {!productsLoading && filter === "all" && productPage.totalPages > 1 && (
+          {!catalogLoading && filter === "all" && productPage.totalPages > 1 && (
             <nav className="pagination" aria-label="Product pages">
               <button type="button" className="pagination-arrow" onClick={() => void loadPage(productPage.page - 1)} disabled={productPage.page === 1}><ArrowIcon /><span>Previous</span></button>
               {Array.from({ length: productPage.totalPages }, (_, index) => index + 1).map((page) => (
@@ -520,18 +515,37 @@ export function Storefront({
           )}
         </section>
 
-        <section className="story-section" id="story">
+        {filter === "all" && <section className="story-section" id="story">
           <p className="eyebrow">Why Codart</p>
           <h2>We believe good technology should feel simple.</h2>
           <p>So we skip the endless catalog and choose a focused collection of products that earn their place in your day.</p>
           <div className="story-line" />
-        </section>
+        </section>}
       </main>
 
-      <footer id="contact">
-        <Link href="/" className="brand" aria-label="Codart home"><Image className="brand-logo" src="/codart-logo.png" alt="Codart" width={512} height={512} /></Link>
-        <p>Questions? Build a cart and send us a message.</p>
-        <a className="footer-whatsapp" href={whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hello Codart! I have a question.")}` : "https://wa.me/"} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /><span>Message us</span></a>
+      <footer className="site-footer" id="contact">
+        <div className="footer-main">
+          <div className="footer-brand">
+            <Link href="/" className="brand" aria-label="Codart home"><Image className="brand-logo" src="/codart-logo.png" alt="Codart" width={512} height={512} /></Link>
+            <p>Useful technology, carefully selected. No endless catalog—just products worth bringing into your day.</p>
+          </div>
+          <nav className="footer-navigation" aria-label="Footer navigation">
+            <p className="eyebrow">Explore</p>
+            <Link href="/#products">Shop products</Link>
+            <Link href="/favorites">Saved items</Link>
+            <Link href="/#story">Our story</Link>
+          </nav>
+          <div className="footer-contact">
+            <p className="eyebrow">Need a hand?</p>
+            <h2>Let’s talk tech.</h2>
+            <p>Questions about a product, delivery, or your order? Send us a message directly.</p>
+            <a className="footer-whatsapp" data-analytics="whatsapp_contact" href={whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hello Codart! I have a question.")}` : "https://wa.me/"} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /><span>Message us on WhatsApp</span><ArrowIcon /></a>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} Codart. All rights reserved.</span>
+          <span>Technology, thoughtfully selected.</span>
+        </div>
       </footer>
 
       {cartOpen && (

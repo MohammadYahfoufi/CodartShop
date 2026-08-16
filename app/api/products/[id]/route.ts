@@ -1,9 +1,14 @@
 import {
   getSupabaseAdmin,
+  isSupabaseTemporarilyUnavailable,
   PRODUCT_IMAGES_BUCKET,
 } from "@/lib/supabase-server";
+import { deleteLocalProduct, updateLocalProduct } from "@/lib/local-products";
+import { requireAdminAccess } from "@/lib/supabase-auth-server";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/products/[id]">) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await context.params;
     const formData = await request.formData();
@@ -14,6 +19,27 @@ export async function PATCH(request: Request, context: RouteContext<"/api/produc
 
     if (!title || !description || !Number.isFinite(price) || price < 0) {
       return Response.json({ error: "Title, description, and a valid price are required." }, { status: 400 });
+    }
+    if (image instanceof File && image.size > 0 && image.type !== "image/webp") {
+      return Response.json({ error: "Images must be converted to WebP before upload." }, { status: 415 });
+    }
+    if (image instanceof File && image.size > 5 * 1024 * 1024) {
+      return Response.json({ error: "The optimized image must be smaller than 5 MB." }, { status: 413 });
+    }
+
+    if (id.startsWith("local-")) {
+      const updated = await updateLocalProduct(id, {
+        title,
+        description,
+        price,
+        ...(image instanceof File && image.size > 0 ? { image } : {}),
+      });
+      return updated
+        ? Response.json(updated)
+        : Response.json({ error: "Product not found." }, { status: 404 });
+    }
+    if (isSupabaseTemporarilyUnavailable()) {
+      return Response.json({ error: "Supabase is offline; only locally added products can be edited." }, { status: 503 });
     }
 
     const supabase = getSupabaseAdmin();
@@ -81,8 +107,18 @@ export async function PATCH(request: Request, context: RouteContext<"/api/produc
 }
 
 export async function DELETE(_request: Request, context: RouteContext<"/api/products/[id]">) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await context.params;
+    if (id.startsWith("local-")) {
+      return await deleteLocalProduct(id)
+        ? new Response(null, { status: 204 })
+        : Response.json({ error: "Product not found." }, { status: 404 });
+    }
+    if (isSupabaseTemporarilyUnavailable()) {
+      return Response.json({ error: "Supabase is offline; only locally added products can be deleted." }, { status: 503 });
+    }
     const supabase = getSupabaseAdmin();
     const { data: product, error: readError } = await supabase
       .from("products")

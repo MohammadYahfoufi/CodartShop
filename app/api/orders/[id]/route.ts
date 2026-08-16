@@ -1,9 +1,12 @@
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import type { OrderStatus } from "@/lib/types";
+import { requireAdminAccess } from "@/lib/supabase-auth-server";
 
 const statuses: OrderStatus[] = ["pending", "confirmed", "fulfilled", "cancelled"];
 
 export async function PATCH(request: Request, context: RouteContext<"/api/orders/[id]">) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await context.params;
     const body = await request.json();

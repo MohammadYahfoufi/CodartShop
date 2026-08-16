@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <div className="product-grid" aria-label="Loading products" role="status" aria-live="polite">
@@ -22,7 +24,7 @@ export function StoreLoading() {
     <div className="loading-page" aria-busy="true">
       <div className="route-progress" aria-hidden="true" />
       <header className="loading-header">
-        <strong>CODART</strong>
+        <span className="loading-brand"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></span>
         <span>Loading shop…</span>
       </header>
       <main className="loading-shell">

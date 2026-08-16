@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useState } from "react";
 import { ArrowIcon, BagIcon, CloseIcon, EditIcon, ImageIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { ProductVisual } from "@/components/product-visual";
-import type { AdminOrder, OrderStatus, Product } from "@/lib/types";
+import { BannerManager } from "@/components/banner-manager";
+import type { AdminOrder, HeroSlide, OrderStatus, Product } from "@/lib/types";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -28,12 +29,16 @@ export function AdminDashboard({
   initialProducts,
   initialOrders,
   favoriteCount,
+  initialSlides,
   configured,
+  productsOnly = false,
 }: {
   initialProducts: Product[];
   initialOrders: AdminOrder[];
   favoriteCount: number;
+  initialSlides: HeroSlide[];
   configured: boolean;
+  productsOnly?: boolean;
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
@@ -107,10 +112,6 @@ export function AdminDashboard({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!configured) {
-      setStatus("Connect Supabase before managing products.");
-      return;
-    }
     if (!editing && !image) {
       setStatus("Choose a product image.");
       return;
@@ -132,7 +133,9 @@ export function AdminDashboard({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to save product.");
       setProducts((items) => editing ? items.map((item) => item.id === result.id ? result : item) : [result, ...items]);
+      const successMessage = editing ? "Product updated successfully." : "Product and image published successfully.";
       resetForm();
+      setStatus(successMessage);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to save product.");
     } finally {
@@ -141,7 +144,7 @@ export function AdminDashboard({
   }
 
   async function removeProduct(product: Product) {
-    if (!configured || !confirm(`Delete “${product.title}”? This cannot be undone.`)) return;
+    if (!confirm(`Delete “${product.title}”? This cannot be undone.`)) return;
     setDeletingId(product.id);
     try {
       const response = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
@@ -183,14 +186,14 @@ export function AdminDashboard({
         <Link href="/" className="secondary-button">View storefront <ArrowIcon /></Link>
       </header>
 
-      <section className="admin-stats" aria-label="Store overview">
+      {!productsOnly && <section className="admin-stats" aria-label="Store overview">
         <div><span>Products</span><strong>{products.length}</strong></div>
         <div><span>Orders</span><strong>{orders.length}</strong></div>
         <div><span>Pending</span><strong>{orders.filter((order) => order.status === "pending").length}</strong></div>
         <div><span>Saved favorites</span><strong>{favoriteCount}</strong></div>
-      </section>
+      </section>}
 
-      {!configured && <div className="setup-notice"><strong>Supabase setup required</strong><span>The sample catalog is read-only. Add your Supabase URL and service role key to <code>.env.local</code>, then run the included SQL setup.</span></div>}
+      {!configured && <div className="setup-notice"><strong>Local storage mode</strong><span>Products and images can be added locally. Connect Supabase before production deployment.</span></div>}
       <div className="security-notice"><strong>Development-only admin</strong><span>This route has no authentication, as requested. Add access control before exposing it publicly.</span></div>
 
       <div className="admin-layout">
@@ -222,7 +225,7 @@ export function AdminDashboard({
               {preview || editing?.image_url ? <div className="upload-preview"><ProductVisual src={preview || editing?.image_url || ""} alt="Product preview" /><span>Choose a different image</span></div> : <><ImageIcon /><strong>Drop or choose an image</strong><small>Converted to WebP automatically · max 1600px</small></>}
             </label></div>
             {status && <p className="form-status" role="status">{status}</p>}
-            <button className="admin-submit" type="submit" disabled={saving || !configured}>{saving ? <span className="spinner" /> : editing ? <EditIcon /> : <PlusIcon />}{saving ? "Saving…" : editing ? "Update product" : "Publish product"}</button>
+            <button className="admin-submit" type="submit" disabled={saving}>{saving ? <span className="spinner" /> : editing ? <EditIcon /> : <PlusIcon />}{saving ? "Saving…" : editing ? "Update product" : "Publish product"}</button>
           </form>
         </section>
 
@@ -233,14 +236,16 @@ export function AdminDashboard({
               <article className="admin-product" key={product.id}>
                 <div className="admin-product-image"><ProductVisual src={product.image_url} alt={product.title} /></div>
                 <div className="admin-product-copy"><h3>{product.title}</h3><p>{product.description}</p><strong>{money.format(product.price)}</strong></div>
-                <div className="admin-product-actions"><button onClick={() => startEdit(product)} disabled={!configured} aria-label={`Edit ${product.title}`}><EditIcon /></button><button className="danger-action" onClick={() => removeProduct(product)} disabled={!configured || deletingId === product.id} aria-label={`Delete ${product.title}`}>{deletingId === product.id ? <span className="spinner dark" /> : <TrashIcon />}</button></div>
+                <div className="admin-product-actions"><button onClick={() => startEdit(product)} aria-label={`Edit ${product.title}`}><EditIcon /></button><button className="danger-action" onClick={() => removeProduct(product)} disabled={deletingId === product.id} aria-label={`Delete ${product.title}`}>{deletingId === product.id ? <span className="spinner dark" /> : <TrashIcon />}</button></div>
               </article>
             ))}
           </div>
         </section>
       </div>
 
-      <section className="admin-orders-panel">
+      {!productsOnly && <BannerManager initialSlides={initialSlides} />}
+
+      {!productsOnly && <section className="admin-orders-panel">
         <div className="panel-heading"><div><p className="eyebrow">Customer activity</p><h2>Recent orders</h2></div><span>{orders.length} total</span></div>
         <div className="admin-orders">
           {orders.length === 0 ? (
@@ -257,7 +262,7 @@ export function AdminDashboard({
             </article>
           ))}
         </div>
-      </section>
+      </section>}
     </main>
   );
 }

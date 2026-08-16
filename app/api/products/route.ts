@@ -1,8 +1,13 @@
 import { getProductsPage } from "@/lib/products";
+import { createLocalProduct } from "@/lib/local-products";
 import {
   getSupabaseAdmin,
+  isSupabaseConfigured,
+  isSupabaseTemporarilyUnavailable,
+  markSupabaseUnavailable,
   PRODUCT_IMAGES_BUCKET,
 } from "@/lib/supabase-server";
+import { requireAdminAccess } from "@/lib/supabase-auth-server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +27,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
   try {
     const formData = await request.formData();
     const title = String(formData.get("title") ?? "").trim();
@@ -34,6 +41,16 @@ export async function POST(request: Request) {
     }
     if (image.type !== "image/webp") {
       return Response.json({ error: "Images must be converted to WebP before upload." }, { status: 415 });
+    }
+    if (image.size > 5 * 1024 * 1024) {
+      return Response.json({ error: "The optimized image must be smaller than 5 MB." }, { status: 413 });
+    }
+
+    if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+      return Response.json(
+        await createLocalProduct({ title, description, price, image }),
+        { status: 201 },
+      );
     }
 
     const supabase = getSupabaseAdmin();
@@ -70,6 +87,7 @@ export async function POST(request: Request) {
 
     return Response.json(data, { status: 201 });
   } catch (error) {
+    markSupabaseUnavailable();
     return Response.json({ error: error instanceof Error ? error.message : "Unable to create product." }, { status: 500 });
   }
 }

@@ -41,9 +41,33 @@ create table if not exists public.favorites (
   primary key (visitor_id, product_id)
 );
 
+create table if not exists public.hero_slides (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 1 and 100),
+  subtitle text not null default '' check (char_length(subtitle) <= 240),
+  image_url text not null,
+  image_path text not null,
+  cta_label text not null default 'Shop now' check (char_length(cta_label) between 1 and 40),
+  cta_href text not null default '/#products' check (char_length(cta_href) between 1 and 300),
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.analytics_daily (
+  day date not null default current_date,
+  metric text not null check (metric in ('page_view', 'click')),
+  event_key text not null check (char_length(event_key) between 1 and 180),
+  event_count bigint not null default 0 check (event_count >= 0),
+  primary key (day, metric, event_key)
+);
+
 create index if not exists order_items_order_id_idx on public.order_items(order_id);
 create index if not exists orders_created_at_idx on public.orders(created_at desc);
 create index if not exists favorites_product_id_idx on public.favorites(product_id);
+create index if not exists hero_slides_order_idx on public.hero_slides(active, sort_order);
+create index if not exists analytics_daily_day_idx on public.analytics_daily(day desc);
 create index if not exists products_title_search_idx on public.products using gin (title gin_trgm_ops);
 create index if not exists products_description_search_idx on public.products using gin (description gin_trgm_ops);
 
@@ -51,13 +75,47 @@ alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.favorites enable row level security;
+alter table public.hero_slides enable row level security;
+alter table public.analytics_daily enable row level security;
 
 grant select on table public.products to anon, authenticated;
 grant select, insert, update, delete on table public.products to service_role;
 grant select, insert, update, delete on table public.orders to service_role;
 grant select, insert, update, delete on table public.order_items to service_role;
 grant select, insert, update, delete on table public.favorites to service_role;
+grant select, insert, update, delete on table public.hero_slides to service_role;
+grant select, insert, update, delete on table public.analytics_daily to service_role;
 grant usage, select on sequence public.order_items_id_seq to service_role;
+
+create or replace function public.increment_analytics_batch(events jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  event jsonb;
+  clean_metric text;
+  clean_key text;
+  clean_count integer;
+begin
+  for event in select * from jsonb_array_elements(events)
+  loop
+    clean_metric := event->>'metric';
+    clean_key := left(event->>'key', 180);
+    clean_count := least(1000, greatest(1, coalesce((event->>'count')::integer, 1)));
+    if clean_metric in ('page_view', 'click') and char_length(clean_key) > 0 then
+      insert into public.analytics_daily(day, metric, event_key, event_count)
+      values (current_date, clean_metric, clean_key, clean_count)
+      on conflict (day, metric, event_key)
+      do update set event_count = analytics_daily.event_count + excluded.event_count;
+    end if;
+  end loop;
+end;
+$$;
+
+revoke all on function public.increment_analytics_batch(jsonb) from public, anon, authenticated;
+grant execute on function public.increment_analytics_batch(jsonb) to service_role;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('CodartlbShop', 'CodartlbShop', true, 5242880, array['image/webp'])

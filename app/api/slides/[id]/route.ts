@@ -1,0 +1,46 @@
+import { deleteLocalSlide, updateLocalSlide } from "@/lib/slides";
+import { getSupabaseAdmin, PRODUCT_IMAGES_BUCKET } from "@/lib/supabase-server";
+import { requireAdminAccess } from "@/lib/supabase-auth-server";
+
+export async function PATCH(request: Request, context: RouteContext<"/api/slides/[id]">) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
+  try {
+    const { id } = await context.params;
+    const body = await request.json();
+    const updates: { active?: boolean; sort_order?: number } = {};
+    if (typeof body?.active === "boolean") updates.active = body.active;
+    if (Number.isInteger(body?.sort_order)) updates.sort_order = body.sort_order;
+    if (!Object.keys(updates).length) return Response.json({ error: "No valid changes supplied." }, { status: 400 });
+    if (id.startsWith("local-")) {
+      const slide = await updateLocalSlide(id, updates);
+      return slide ? Response.json(slide) : Response.json({ error: "Banner not found." }, { status: 404 });
+    }
+    const { data, error } = await getSupabaseAdmin().from("hero_slides").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id).select("*").maybeSingle();
+    if (error) throw error;
+    return data ? Response.json(data) : Response.json({ error: "Banner not found." }, { status: 404 });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to update banner." }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext<"/api/slides/[id]">) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
+  try {
+    const { id } = await context.params;
+    if (id.startsWith("local-")) {
+      return await deleteLocalSlide(id) ? new Response(null, { status: 204 }) : Response.json({ error: "Banner not found." }, { status: 404 });
+    }
+    const supabase = getSupabaseAdmin();
+    const { data, error: readError } = await supabase.from("hero_slides").select("image_path").eq("id", id).maybeSingle();
+    if (readError) throw readError;
+    if (!data) return Response.json({ error: "Banner not found." }, { status: 404 });
+    const { error } = await supabase.from("hero_slides").delete().eq("id", id);
+    if (error) throw error;
+    await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([data.image_path]);
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to delete banner." }, { status: 500 });
+  }
+}
