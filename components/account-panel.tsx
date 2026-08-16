@@ -77,6 +77,12 @@ export function AccountPanel() {
     ?? user.user_metadata?.name
     ?? user.email?.split("@")[0]
     ?? "Codart customer";
+  const currentOrders = orders?.filter((order) => ["pending", "confirmed", "shipped"].includes(order.status)) ?? [];
+  const previousOrders = orders?.filter((order) => ["delivered", "cancelled"].includes(order.status)) ?? [];
+
+  function orderCard(order: AccountOrder) {
+    return <article className="account-order-card" key={order.id}><header><div><small>Order</small><strong>#{order.id.slice(0, 8).toUpperCase()}</strong></div><span className={`account-order-status status-${order.status}`}>{orderStatusLabels[order.status]}</span></header><div className="account-order-items">{order.order_items.map((item) => <span key={item.id}>{item.product_title}<b>× {item.quantity}</b></span>)}</div><footer><div><strong>{money.format(Number(order.total))}</strong><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(order.created_at))}</small></div><Link href={`/track-order?order=${encodeURIComponent(order.id)}`}>Track order →</Link></footer></article>;
+  }
 
   return (
     <main className="account-page">
@@ -90,19 +96,12 @@ export function AccountPanel() {
           <Link href="/favorites"><strong>Saved products</strong><span>Open your favourites →</span></Link>
           <Link href="/cart"><strong>Your cart</strong><span>Continue shopping →</span></Link>
         </div>
-        <section className="account-orders" aria-live="polite">
-          <header><strong>Your orders</strong><span>{orders === undefined ? "Loading…" : `${orders?.length ?? 0} recent`}</span></header>
+        <section className="account-orders account-order-history" id="orders" aria-live="polite">
+          <header><strong>Your orders</strong><span>{orders === undefined ? "Loading…" : `${orders?.length ?? 0} total`}</span></header>
           {orders === null ? (
             <p>Order history will appear after the account-data migration is installed.</p>
           ) : orders?.length ? (
-            <ul>
-              {orders.slice(0, 5).map((order) => (
-                <li key={order.id}>
-                  <span><strong>#{order.id.slice(0, 8).toUpperCase()}</strong><small className={`status-${order.status}`}>{orderStatusLabels[order.status]}</small></span>
-                  <span><strong>{money.format(Number(order.total))}</strong><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(order.created_at))}</small></span>
-                </li>
-              ))}
-            </ul>
+            <div className="account-order-groups">{currentOrders.length > 0 && <section><h2>Current orders</h2><div>{currentOrders.map(orderCard)}</div></section>}{previousOrders.length > 0 && <section><h2>Order history</h2><div>{previousOrders.map(orderCard)}</div></section>}</div>
           ) : orders !== undefined ? <p>No orders connected to this account yet.</p> : null}
         </section>
         <button type="button" className="account-signout" onClick={signOut}>Sign out</button>

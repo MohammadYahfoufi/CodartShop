@@ -28,7 +28,7 @@ export async function GET() {
       .select("id,subtotal,delivery_fee,total,status,created_at,order_items(id,product_title,unit_price,quantity)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(100);
     if (error) throw error;
     return Response.json({ orders: data ?? [] }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

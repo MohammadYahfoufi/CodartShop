@@ -493,6 +493,7 @@ export function Storefront({
           <Link href="/#contact">Contact</Link>
         </nav>
         <div className="header-actions">
+          <Link className="track-trigger" href="/track-order" aria-label="Track an order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14v12H5z" /><path d="M8 7V5h8v2M9 12h6M12 9v6" /></svg><span>Track order</span></Link>
           <AuthButton />
           <Link
             href="/favorites"

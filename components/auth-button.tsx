@@ -94,6 +94,8 @@ export function AuthButton() {
         </header>
         <nav aria-label="Account menu">
           <Link href="/account"><span>My account</span><b aria-hidden="true">-&gt;</b></Link>
+          <Link href="/account#orders"><span>My orders</span><b aria-hidden="true">-&gt;</b></Link>
+          <Link href="/track-order"><span>Track an order</span><b aria-hidden="true">-&gt;</b></Link>
           <Link href="/favorites"><span>Saved products</span><b aria-hidden="true">-&gt;</b></Link>
           {profile.admin && <Link href="/admin"><span>Admin dashboard</span><b aria-hidden="true">-&gt;</b></Link>}
         </nav>

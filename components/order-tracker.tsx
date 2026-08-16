@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { realtimeTopics } from "@/lib/realtime-topics";
 import type { OrderStatus } from "@/lib/types";
@@ -22,6 +22,7 @@ export function OrderTracker() {
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const autoLoaded = useRef(false);
 
   const loadOrder = useCallback(async () => {
     setLoading(true); setError("");
@@ -32,6 +33,12 @@ export function OrderTracker() {
   function submit(event: FormEvent) { event.preventDefault(); void loadOrder(); }
 
   useEffect(() => {
+    if (!orderId || autoLoaded.current) return;
+    autoLoaded.current = true;
+    void loadOrder();
+  }, [loadOrder, orderId]);
+
+  useEffect(() => {
     if (!order?.id) return;
     const supabase = createSupabaseBrowserClient(); if (!supabase) return;
     const channel = supabase.channel(realtimeTopics.orderStatus(order.id)).on("broadcast", { event: "status-changed" }, () => void loadOrder()).subscribe();
@@ -39,5 +46,5 @@ export function OrderTracker() {
   }, [loadOrder, order?.id]);
 
   const activeIndex = order ? stages.findIndex((stage) => stage.status === order.status) : -1;
-  return <main className="tracking-page"><section className="tracking-shell"><header><p className="eyebrow">Live order tracking</p><h1>Where’s my order?</h1><p>Enter the complete order number and the phone used during checkout.</p></header><form className="tracking-form" onSubmit={submit}><label><span>Order number</span><input value={orderId} onChange={(event) => setOrderId(event.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></label><label><span>Phone number</span><input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" autoComplete="tel" placeholder="Your checkout phone" required /></label><button type="submit" disabled={loading}>{loading ? "Checking…" : "Track order"}</button></form>{error && <p className="tracking-error" role="alert">{error}</p>}{order && <article className="tracking-result"><div className="tracking-result-head"><div><small>Order</small><strong>#{order.id.slice(0, 8).toUpperCase()}</strong></div><div><small>Total</small><strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.total)}</strong></div></div>{order.status === "cancelled" ? <div className="tracking-cancelled"><strong>Cancelled</strong><span>This order was cancelled. Contact us if you need help.</span></div> : <ol className="tracking-timeline">{stages.map((stage, index) => <li className={index < activeIndex ? "is-complete" : index === activeIndex ? "is-current" : ""} key={stage.status}><i /><div><strong>{stage.label}</strong><span>{stage.copy}</span></div></li>)}</ol>}<div className="tracking-items">{order.order_items.map((item) => <span key={item.id}>{item.product_title}<b>× {item.quantity}</b></span>)}</div></article>}<Link className="auth-back" href="/">← Back to the shop</Link></section></main>;
+  return <main className="tracking-page"><section className="tracking-shell"><header><p className="eyebrow">Live order tracking</p><h1>Where’s my order?</h1><p>Signed-in customers can open their orders directly. Guest orders also require the checkout phone.</p></header><form className="tracking-form" onSubmit={submit}><label><span>Order number</span><input value={orderId} onChange={(event) => setOrderId(event.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></label><label><span>Phone number <small>guest orders</small></span><input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" autoComplete="tel" placeholder="Your checkout phone" /></label><button type="submit" disabled={loading}>{loading ? "Checking…" : "Track order"}</button></form>{error && <p className="tracking-error" role="alert">{error}</p>}{order && <article className="tracking-result"><div className="tracking-result-head"><div><small>Order</small><strong>#{order.id.slice(0, 8).toUpperCase()}</strong></div><div><small>Total</small><strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.total)}</strong></div></div>{order.status === "cancelled" ? <div className="tracking-cancelled"><strong>Cancelled</strong><span>This order was cancelled. Contact us if you need help.</span></div> : <ol className="tracking-timeline">{stages.map((stage, index) => <li className={index < activeIndex ? "is-complete" : index === activeIndex ? "is-current" : ""} key={stage.status}><i /><div><strong>{stage.label}</strong><span>{stage.copy}</span></div></li>)}</ol>}<div className="tracking-items">{order.order_items.map((item) => <span key={item.id}>{item.product_title}<b>× {item.quantity}</b></span>)}</div></article>}<Link className="auth-back" href="/">← Back to the shop</Link></section></main>;
 }
