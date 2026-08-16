@@ -107,6 +107,7 @@ export function Storefront({
   const [category, setCategory] = useState("");
   const [sort, setSort] = useState("newest");
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -548,7 +549,9 @@ export function Storefront({
             </div>
           </div>
 
-          {filter === "all" && <div className="catalog-controls" aria-label="Catalog filters">
+          {filter === "all" && <div className="filter-area">
+            <div className="filter-toolbar"><button type="button" className={`filter-trigger ${filtersOpen ? "is-active" : ""}`} aria-expanded={filtersOpen} aria-controls="catalog-filter-menu" onClick={() => setFiltersOpen((open) => !open)}><span className="filter-trigger-icon" aria-hidden="true"><i /><i /><i /></span><span>Filter & sort</span>{(category || featuredOnly || sort !== "newest") && <b>Active</b>}</button></div>
+            {filtersOpen && <div className="catalog-controls" id="catalog-filter-menu" aria-label="Catalog filters">
             <div className="category-filters">
               <button type="button" className={!category ? "is-active" : ""} onClick={() => setCategory("")}>All</button>
               {(productPage.categories ?? []).map((item) => <button type="button" className={category === item ? "is-active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}
@@ -556,7 +559,9 @@ export function Storefront({
             <div className="catalog-selects">
               <label><span className="sr-only">Featured filter</span><select value={featuredOnly ? "featured" : "all"} onChange={(event) => setFeaturedOnly(event.target.value === "featured")}><option value="all">All products</option><option value="featured">Featured only</option></select></label>
               <label><span className="sr-only">Sort products</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="newest">Newest</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></label>
+              <button type="button" className="filter-reset" onClick={() => { setCategory(""); setFeaturedOnly(false); setSort("newest"); }}>Reset</button>
             </div>
+          </div>}
           </div>}
 
           <div className="catalog-status" aria-live="polite">
@@ -608,7 +613,7 @@ export function Storefront({
               })}
             </div>
           ) : (
-            <div className="empty-state"><HeartIcon /><h3>{filter === "favorites" ? "Nothing saved yet" : "No products found"}</h3><p>{filter === "favorites" ? "Tap the heart on a product to keep it here." : "Try a different search term."}</p>{filter === "favorites" && <Link className="text-button centered" href="/#products">Browse all products <ArrowIcon /></Link>}</div>
+            <div className="empty-state"><h3>{filter === "favorites" ? "Nothing saved yet" : "No products found"}</h3><p>{filter === "favorites" ? "Save products from the collection and they’ll appear here." : "Try another search or reset your filters."}</p>{filter === "favorites" ? <Link className="text-button centered" href="/#products">Browse all products <ArrowIcon /></Link> : <button type="button" className="text-button centered" onClick={() => { setQuery(""); setCategory(""); setFeaturedOnly(false); setSort("newest"); }}>Reset filters <ArrowIcon /></button>}</div>
           )}
 
           {!catalogLoading && filter === "all" && productPage.totalPages > 1 && (
