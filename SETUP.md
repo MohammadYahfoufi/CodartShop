@@ -4,6 +4,8 @@
 2. Open **SQL Editor**, paste `supabase/setup.sql`, and run it once. This creates the product, order, order-item, favorites, homepage slideshow, and daily analytics tables, plus their policies, indexes, aggregation function, and the public `CodartlbShop` image bucket.
 
 For a project that was set up before account carts and order history were added, run `supabase/user-data-migration.sql` once in the SQL Editor. New projects only need `supabase/setup.sql`.
+
+If Storage uploads succeed but banners do not appear, run `supabase/banner-migration.sql` once. It creates the `hero_slides` metadata table, repairs the `CodartlbShop` bucket configuration, and refreshes the API schema cache.
 3. Open **Project Settings → API Keys** and add the following to `.env.local`:
 
 ```env

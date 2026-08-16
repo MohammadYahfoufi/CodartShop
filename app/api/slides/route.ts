@@ -43,7 +43,10 @@ export async function POST(request: Request) {
     try {
       const storedImage = await uploadSlideToSupabase(image);
       const { data, error } = await getSupabaseAdmin().from("hero_slides").insert({ ...input, ...storedImage }).select("*").single();
-      if (error) throw error;
+      if (error) {
+        await getSupabaseAdmin().storage.from("CodartlbShop").remove([storedImage.image_path]);
+        throw new Error(`Banner metadata could not be saved: ${error.message}`);
+      }
       return Response.json(data, { status: 201 });
     } catch (error) {
       markSupabaseUnavailable();
@@ -52,7 +55,7 @@ export async function POST(request: Request) {
         return Response.json(await createLocalSlide({ ...input, image }), { status: 201 });
       }
       return Response.json(
-        { error: "Unable to upload the banner to Supabase Storage. Verify the bucket and server secret." },
+        { error: error instanceof Error ? error.message : "Unable to publish the banner through Supabase." },
         { status: 502 },
       );
     }
