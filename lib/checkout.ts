@@ -11,7 +11,6 @@ export const deliveryAreas: Array<{ value: DeliveryArea; label: string; fee: num
 export const paymentMethods: Array<{ value: PaymentMethod; label: string }> = [
   { value: "cash-on-delivery", label: "Cash on delivery" },
   { value: "whish-money", label: "Whish Money" },
-  { value: "bank-transfer", label: "Bank transfer" },
 ];
 
 export function getDeliveryArea(value: unknown) {

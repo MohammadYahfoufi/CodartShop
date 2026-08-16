@@ -51,7 +51,7 @@ export type CheckoutDetails = {
 };
 
 export type DeliveryArea = "beirut" | "mount-lebanon" | "north" | "south" | "bekaa";
-export type PaymentMethod = "cash-on-delivery" | "whish-money" | "bank-transfer";
+export type PaymentMethod = "cash-on-delivery" | "whish-money";
 
 export type OrderRequest = {
   customer: CheckoutDetails;

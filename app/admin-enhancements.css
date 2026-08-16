@@ -158,6 +158,21 @@
 .dashboard-order-list b { font-size: 11px; }
 .dashboard-order-list em { font-size: 8px; font-style: normal; text-transform: capitalize; }
 .status-pending { color: #b47c00; }.status-confirmed { color: #3f62c8; }.status-shipped { color: #7550d8; }.status-delivered { color: #16844a; }.status-cancelled { color: #aa4343; }
+.status-select { border-radius: 999px; font-weight: 800 !important; }
+.status-select.status-pending { border-color: #e9c35c; background: #fff7da; color: #8a6200; }
+.status-select.status-confirmed { border-color: #8fa8ef; background: #edf2ff; color: #3157bd; }
+.status-select.status-shipped { border-color: #b29aea; background: #f2edff; color: #6841c8; }
+.status-select.status-delivered { border-color: #7ed3a3; background: #eaf8f0; color: #167345; }
+.status-select.status-cancelled { border-color: #e6a1a9; background: #fdecef; color: #9e3040; }
+
+@media (max-width: 700px) {
+  .tracking-form { grid-template-columns: 1fr; }
+  .tracking-timeline { grid-template-columns: 1fr; gap: 0; padding: 24px; }
+  .tracking-timeline li { min-height: 70px; display: grid; grid-template-columns: 28px 1fr; text-align: left; align-items: start; }
+  .tracking-timeline li::before { top: 0; bottom: 0; left: 8px !important; right: auto !important; width: 2px; height: auto; }
+  .tracking-timeline li:first-child::before { top: 9px; }.tracking-timeline li:last-child::before { bottom: calc(100% - 9px); }
+  .tracking-timeline i { margin: 0; }
+}
 .quick-actions { display: flex; flex-direction: column; }
 .quick-actions > a { padding: 17px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 5px; }
 .quick-actions > a strong { font-size: 12px; }.quick-actions > a span { color: var(--muted); font-size: 9px; }

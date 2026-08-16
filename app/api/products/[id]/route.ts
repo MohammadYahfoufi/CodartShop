@@ -2,8 +2,15 @@ import { deleteLocalProduct, updateLocalProduct } from "@/lib/local-products";
 import { requireAdminAccess } from "@/lib/supabase-auth-server";
 import { getSupabaseAdmin, isLocalPersistenceEnabled, isSupabaseTemporarilyUnavailable, PRODUCT_IMAGES_BUCKET } from "@/lib/supabase-server";
 import type { ProductImage } from "@/lib/types";
+import { broadcastStoreEvent, realtimeTopics } from "@/lib/realtime-server";
 
 const maxImageSize = 5 * 1024 * 1024;
+
+function productErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : error && typeof error === "object" && "message" in error ? String(error.message) : fallback;
+  if (/schema cache|column .* does not exist|sale_price|stock_quantity|specifications|featured|category|images/i.test(message)) return "Supabase needs the commerce database upgrade. Run supabase/commerce-upgrade.sql in the Supabase SQL Editor, then try again.";
+  return message;
+}
 
 function productImages(product: { image_url?: string; image_path?: string; images?: ProductImage[] }) {
   if (Array.isArray(product.images) && product.images.length) return product.images;
@@ -74,9 +81,10 @@ export async function PATCH(request: Request, context: RouteContext<"/api/produc
       throw updateError;
     }
     if (uploaded.length) await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove(productImages(existing).map((item) => item.path));
+    await broadcastStoreEvent(realtimeTopics.catalog, "catalog-changed");
     return Response.json(data);
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Unable to update product." }, { status: 500 });
+    return Response.json({ error: productErrorMessage(error, "Unable to update product.") }, { status: 500 });
   }
 }
 
@@ -101,9 +109,10 @@ export async function POST(_request: Request, context: RouteContext<"/api/produc
     const fields = Object.fromEntries(Object.entries(existing).filter(([key]) => !["id", "created_at", "updated_at"].includes(key)));
     const { data, error } = await supabase.from("products").insert({ ...fields, title: `${existing.title} Copy`.slice(0, 120), images: copied, image_path: primary?.path ?? existing.image_path, image_url: primary?.url ?? existing.image_url, featured: false }).select("*").single();
     if (error) throw error;
+    await broadcastStoreEvent(realtimeTopics.catalog, "catalog-changed");
     return Response.json(data, { status: 201 });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Unable to duplicate product." }, { status: 500 });
+    return Response.json({ error: productErrorMessage(error, "Unable to duplicate product.") }, { status: 500 });
   }
 }
 
@@ -124,8 +133,9 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/prod
     if (deleteError) throw deleteError;
     const paths = [...new Set(productImages(product).map((image) => image.path).filter(Boolean))];
     if (paths.length) await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove(paths);
+    await broadcastStoreEvent(realtimeTopics.catalog, "catalog-changed");
     return new Response(null, { status: 204 });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Unable to delete product." }, { status: 500 });
+    return Response.json({ error: productErrorMessage(error, "Unable to delete product.") }, { status: 500 });
   }
 }

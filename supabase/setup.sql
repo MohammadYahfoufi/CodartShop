@@ -28,7 +28,7 @@ create table if not exists public.orders (
   delivery_address text not null default '',
   delivery_area text not null default 'beirut' check (delivery_area in ('beirut', 'mount-lebanon', 'north', 'south', 'bekaa')),
   delivery_fee numeric(12, 2) not null default 0 check (delivery_fee >= 0),
-  payment_method text not null default 'cash-on-delivery' check (payment_method in ('cash-on-delivery', 'whish-money', 'bank-transfer')),
+  payment_method text not null default 'cash-on-delivery' check (payment_method in ('cash-on-delivery', 'whish-money')),
   customer_note text not null default '' check (char_length(customer_note) <= 1000),
   subtotal numeric(12, 2) not null default 0 check (subtotal >= 0),
   total numeric(12, 2) not null check (total >= 0),

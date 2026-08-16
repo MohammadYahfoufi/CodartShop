@@ -33,5 +33,6 @@ alter table public.orders drop constraint if exists orders_delivery_area_check;
 alter table public.orders add constraint orders_delivery_area_check
   check (delivery_area in ('beirut', 'mount-lebanon', 'north', 'south', 'bekaa'));
 alter table public.orders drop constraint if exists orders_payment_method_check;
+update public.orders set payment_method = 'cash-on-delivery' where payment_method = 'bank-transfer';
 alter table public.orders add constraint orders_payment_method_check
-  check (payment_method in ('cash-on-delivery', 'whish-money', 'bank-transfer'));
+  check (payment_method in ('cash-on-delivery', 'whish-money'));

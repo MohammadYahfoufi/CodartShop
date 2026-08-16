@@ -7,6 +7,8 @@ import { ProductVisual } from "@/components/product-visual";
 import { BannerManager } from "@/components/banner-manager";
 import { ConfirmDialog, ToastStack, type ToastMessage } from "@/components/feedback";
 import type { AdminOrder, HeroSlide, OrderStatus, Product } from "@/lib/types";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { realtimeTopics } from "@/lib/realtime-topics";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -66,6 +68,15 @@ export function AdminDashboard({
   const pageSize = 8;
 
   useEffect(() => () => { previews.forEach((preview) => URL.revokeObjectURL(preview)); }, [previews]);
+
+  useEffect(() => {
+    if (productsOnly) return;
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) return;
+    const refresh = () => { void fetch("/api/admin/orders", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result: { orders?: AdminOrder[] } | null) => { if (result?.orders) setOrders(result.orders); }); };
+    const channel = supabase.channel(realtimeTopics.adminOrders).on("broadcast", { event: "orders-changed" }, refresh).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [productsOnly]);
 
   function notify(message: string, tone: ToastMessage["tone"] = "info") { setToasts((items) => [...items, { id: Date.now() + Math.random(), message, tone }]); }
 
@@ -294,7 +305,7 @@ export function AdminDashboard({
               </div>
               <ul>{order.order_items.map((item) => <li key={item.id}><span>{item.product_title} × {item.quantity}</span><strong>{money.format(Number(item.unit_price) * item.quantity)}</strong></li>)}</ul>
               {order.customer_note && <p className="admin-order-note">{order.customer_note}</p>}
-              <label className="order-status"><span>Status</span><select value={order.status} disabled={updatingOrderId === order.id || !configured} onChange={(event) => void updateOrderStatus(order.id, event.target.value as OrderStatus)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label>
+              <label className="order-status"><span>Status</span><select className={`status-select status-${order.status}`} value={order.status} disabled={updatingOrderId === order.id || !configured} onChange={(event) => void updateOrderStatus(order.id, event.target.value as OrderStatus)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="shipped">On the way</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label>
             </article>
           ))}
         </div>

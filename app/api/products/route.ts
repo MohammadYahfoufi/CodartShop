@@ -9,8 +9,24 @@ import {
   PRODUCT_IMAGES_BUCKET,
 } from "@/lib/supabase-server";
 import { requireAdminAccess } from "@/lib/supabase-auth-server";
+import { broadcastStoreEvent, realtimeTopics } from "@/lib/realtime-server";
 
 export const dynamic = "force-dynamic";
+
+function productErrorMessage(error: unknown) {
+  const message = error instanceof Error
+    ? error.message
+    : error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : "Unable to create product.";
+  if (/schema cache|column .* does not exist|sale_price|stock_quantity|specifications|featured|category|images/i.test(message)) {
+    return "Supabase needs the commerce database upgrade. Run supabase/commerce-upgrade.sql in the Supabase SQL Editor, then try again.";
+  }
+  if (/bucket|storage|object/i.test(message)) {
+    return `Supabase Storage error: ${message}`;
+  }
+  return message;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -104,10 +120,12 @@ export async function POST(request: Request) {
       throw insertError;
     }
 
+    await broadcastStoreEvent(realtimeTopics.catalog, "catalog-changed");
     return Response.json(data, { status: 201 });
   } catch (error) {
     markSupabaseUnavailable();
-    return Response.json({ error: error instanceof Error ? error.message : "Unable to create product." }, { status: 500 });
+    console.warn("Unable to create product:", productErrorMessage(error));
+    return Response.json({ error: productErrorMessage(error) }, { status: 500 });
   }
 }
 

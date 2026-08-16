@@ -20,6 +20,7 @@ import { HeroCarousel } from "@/components/hero-carousel";
 import { AuthButton } from "@/components/auth-button";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { deliveryAreas, getDeliveryArea, getPaymentMethod, paymentMethods } from "@/lib/checkout";
+import { realtimeTopics } from "@/lib/realtime-topics";
 import {
   CART_KEY,
   FAVORITES_KEY,
@@ -285,6 +286,20 @@ export function Storefront({
       controller.abort();
     };
   }, [query, category, sort, featuredOnly, productPage.pageSize]);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) return;
+    const channel = supabase.channel(realtimeTopics.catalog).on("broadcast", { event: "catalog-changed" }, () => {
+      const parameters = new URLSearchParams({ page: String(productPage.page), pageSize: String(productPage.pageSize) });
+      if (query.trim()) parameters.set("q", query.trim());
+      if (category) parameters.set("category", category);
+      if (sort) parameters.set("sort", sort);
+      if (featuredOnly) parameters.set("featured", "true");
+      void fetch(`/api/products?${parameters}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result: PaginatedProducts | null) => { if (result) setProductPage(result); });
+    }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [category, featuredOnly, productPage.page, productPage.pageSize, query, sort]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -646,6 +661,7 @@ export function Storefront({
             <p className="eyebrow">Explore</p>
             <Link href="/#products">Shop products</Link>
             <Link href="/favorites">Saved items</Link>
+            <Link href="/track-order">Track order</Link>
             <Link href="/#story">Our story</Link>
           </nav>
           <div className="footer-contact">

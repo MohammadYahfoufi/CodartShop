@@ -8,6 +8,8 @@ import type { User } from "@supabase/supabase-js";
 import { money } from "@/lib/commerce";
 import { createSupabaseBrowserClient, isBrowserAuthConfigured } from "@/lib/supabase-browser";
 import type { AccountOrder } from "@/lib/types";
+import { realtimeTopics } from "@/lib/realtime-topics";
+import { orderStatusLabels } from "@/lib/order-status";
 
 export function AccountPanel() {
   const router = useRouter();
@@ -35,6 +37,15 @@ export function AccountPanel() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) return;
+    const refresh = () => { void fetch("/api/orders", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result: { orders?: AccountOrder[] } | null) => { if (result?.orders) setOrders(result.orders); }); };
+    const channel = supabase.channel(realtimeTopics.userOrders(user.id)).on("broadcast", { event: "orders-changed" }, refresh).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   async function signOut() {
     const supabase = createSupabaseBrowserClient();
@@ -87,7 +98,7 @@ export function AccountPanel() {
             <ul>
               {orders.slice(0, 5).map((order) => (
                 <li key={order.id}>
-                  <span><strong>#{order.id.slice(0, 8).toUpperCase()}</strong><small>{order.status}</small></span>
+                  <span><strong>#{order.id.slice(0, 8).toUpperCase()}</strong><small className={`status-${order.status}`}>{orderStatusLabels[order.status]}</small></span>
                   <span><strong>{money.format(Number(order.total))}</strong><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(order.created_at))}</small></span>
                 </li>
               ))}

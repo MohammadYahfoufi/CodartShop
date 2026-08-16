@@ -4,6 +4,7 @@ import { getSupabaseAdmin, isLocalPersistenceEnabled } from "@/lib/supabase-serv
 import type { OrderRequest } from "@/lib/types";
 import { getDeliveryArea, getPaymentMethod } from "@/lib/checkout";
 import { sendOrderReceivedEmail } from "@/lib/order-email";
+import { broadcastStoreEvent, realtimeTopics } from "@/lib/realtime-server";
 
 type ProductSnapshot = {
   id: string;
@@ -151,6 +152,11 @@ export async function POST(request: Request) {
     const receipt = { id: order.id, subtotal, deliveryFee, total: Number(order.total) };
     try { await sendOrderReceivedEmail(body.customer, receipt); }
     catch (emailError) { console.warn("Unable to send order receipt:", emailError instanceof Error ? emailError.message : emailError); }
+    await Promise.all([
+      broadcastStoreEvent(realtimeTopics.adminOrders, "orders-changed"),
+      broadcastStoreEvent(realtimeTopics.catalog, "catalog-changed"),
+      ...(userId ? [broadcastStoreEvent(realtimeTopics.userOrders(userId), "orders-changed")] : []),
+    ]);
     return Response.json(receipt, { status: 201 });
   } catch (error) {
     console.warn("Unable to create order:", error instanceof Error ? error.message : error);
