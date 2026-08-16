@@ -1,6 +1,7 @@
 export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <div className="product-grid" aria-label="Loading products">
+    <div className="product-grid" aria-label="Loading products" role="status" aria-live="polite">
+      <span className="sr-only">Loading products…</span>
       {Array.from({ length: count }, (_, index) => (
         <div className="product-card skeleton-card" key={index}>
           <div className="skeleton skeleton-image" />
@@ -12,6 +13,24 @@ export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+export function StoreLoading() {
+  return (
+    <div className="loading-page" aria-busy="true">
+      <div className="route-progress" aria-hidden="true" />
+      <header className="loading-header">
+        <strong>CODART</strong>
+        <span>Loading shop…</span>
+      </header>
+      <main className="loading-shell">
+        <div className="skeleton loading-kicker" />
+        <div className="skeleton loading-heading" />
+        <div className="skeleton loading-copy" />
+        <ProductGridSkeleton />
+      </main>
     </div>
   );
 }

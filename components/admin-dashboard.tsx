@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useState } from "react";
-import { ArrowIcon, CloseIcon, EditIcon, ImageIcon, PlusIcon, TrashIcon } from "@/components/icons";
+import { ArrowIcon, BagIcon, CloseIcon, EditIcon, ImageIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { ProductVisual } from "@/components/product-visual";
-import type { Product } from "@/lib/types";
+import type { AdminOrder, OrderStatus, Product } from "@/lib/types";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -24,8 +24,19 @@ async function convertToWebP(file: File): Promise<File> {
   return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
 }
 
-export function AdminDashboard({ initialProducts, configured }: { initialProducts: Product[]; configured: boolean }) {
+export function AdminDashboard({
+  initialProducts,
+  initialOrders,
+  favoriteCount,
+  configured,
+}: {
+  initialProducts: Product[];
+  initialOrders: AdminOrder[];
+  favoriteCount: number;
+  configured: boolean;
+}) {
   const [products, setProducts] = useState(initialProducts);
+  const [orders, setOrders] = useState(initialOrders);
   const [editing, setEditing] = useState<Product | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -36,6 +47,7 @@ export function AdminDashboard({ initialProducts, configured }: { initialProduct
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState("");
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -146,12 +158,37 @@ export function AdminDashboard({ initialProducts, configured }: { initialProduct
     }
   }
 
+  async function updateOrderStatus(id: string, status: OrderStatus) {
+    setUpdatingOrderId(id);
+    try {
+      const response = await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update order.");
+      setOrders((items) => items.map((order) => order.id === id ? { ...order, status } : order));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Unable to update order.");
+    } finally {
+      setUpdatingOrderId("");
+    }
+  }
+
   return (
     <main className="admin-shell">
       <header className="admin-header">
         <div><p className="eyebrow">Codart workspace</p><h1>Product administration</h1><p>Create and maintain the storefront collection.</p></div>
         <Link href="/" className="secondary-button">View storefront <ArrowIcon /></Link>
       </header>
+
+      <section className="admin-stats" aria-label="Store overview">
+        <div><span>Products</span><strong>{products.length}</strong></div>
+        <div><span>Orders</span><strong>{orders.length}</strong></div>
+        <div><span>Pending</span><strong>{orders.filter((order) => order.status === "pending").length}</strong></div>
+        <div><span>Saved favorites</span><strong>{favoriteCount}</strong></div>
+      </section>
 
       {!configured && <div className="setup-notice"><strong>Supabase setup required</strong><span>The sample catalog is read-only. Add your Supabase URL and service role key to <code>.env.local</code>, then run the included SQL setup.</span></div>}
       <div className="security-notice"><strong>Development-only admin</strong><span>This route has no authentication, as requested. Add access control before exposing it publicly.</span></div>
@@ -202,6 +239,25 @@ export function AdminDashboard({ initialProducts, configured }: { initialProduct
           </div>
         </section>
       </div>
+
+      <section className="admin-orders-panel">
+        <div className="panel-heading"><div><p className="eyebrow">Customer activity</p><h2>Recent orders</h2></div><span>{orders.length} total</span></div>
+        <div className="admin-orders">
+          {orders.length === 0 ? (
+            <div className="admin-empty"><BagIcon /><h3>No orders yet</h3><p>Saved checkout orders will appear here.</p></div>
+          ) : orders.map((order) => (
+            <article className="admin-order" key={order.id}>
+              <div className="admin-order-heading">
+                <div><small>#{order.id.slice(0, 8).toUpperCase()}</small><h3>{order.customer_name}</h3><a href={`tel:${order.customer_phone}`}>{order.customer_phone}</a></div>
+                <div><strong>{money.format(order.total)}</strong><time dateTime={order.created_at}>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.created_at))}</time></div>
+              </div>
+              <ul>{order.order_items.map((item) => <li key={item.id}><span>{item.product_title} × {item.quantity}</span><strong>{money.format(Number(item.unit_price) * item.quantity)}</strong></li>)}</ul>
+              {order.customer_note && <p className="admin-order-note">{order.customer_note}</p>}
+              <label className="order-status"><span>Status</span><select value={order.status} disabled={updatingOrderId === order.id || !configured} onChange={(event) => void updateOrderStatus(order.id, event.target.value as OrderStatus)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="fulfilled">Fulfilled</option><option value="cancelled">Cancelled</option></select></label>
+            </article>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

@@ -1,5 +1,3 @@
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { getProductsPage } from "@/lib/products";
 import {
   getSupabaseAdmin,
@@ -12,11 +10,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Number(searchParams.get("page") ?? 1);
   const pageSize = Number(searchParams.get("pageSize") ?? 6);
+  const search = searchParams.get("q") ?? "";
 
   return Response.json(
     await getProductsPage(
       Number.isFinite(page) ? page : 1,
       Number.isFinite(pageSize) ? pageSize : 6,
+      search,
     ),
   );
 }
@@ -38,32 +38,37 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
     const imagePath = `${crypto.randomUUID()}.webp`;
-    const { error: uploadError } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(imagePath, image, {
-      contentType: "image/webp",
-      cacheControl: "31536000",
-      upsert: false,
-    });
+    const { error: uploadError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .upload(imagePath, image, {
+        contentType: "image/webp",
+        cacheControl: "31536000",
+        upsert: false,
+      });
     if (uploadError) throw uploadError;
 
-    const { data: publicData } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(imagePath);
-    const now = new Date().toISOString();
+    const imageUrl = supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .getPublicUrl(imagePath).data.publicUrl;
     const product = {
       title,
       description,
       price,
-      image_url: publicData.publicUrl,
+      image_url: imageUrl,
       image_path: imagePath,
-      created_at: now,
-      updated_at: now,
     };
+    const { data, error: insertError } = await supabase
+      .from("products")
+      .insert(product)
+      .select("*")
+      .single();
 
-    try {
-      const document = await addDoc(collection(db, "products"), product);
-      return Response.json({ id: document.id, ...product }, { status: 201 });
-    } catch (error) {
+    if (insertError) {
       await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([imagePath]);
-      throw error;
+      throw insertError;
     }
+
+    return Response.json(data, { status: 201 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to create product." }, { status: 500 });
   }
