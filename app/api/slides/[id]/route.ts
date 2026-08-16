@@ -27,6 +27,29 @@ export async function PATCH(request: Request, context: RouteContext<"/api/slides
   }
 }
 
+export async function POST(_request: Request, context: RouteContext<"/api/slides/[id]">) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
+  try {
+    const { id } = await context.params;
+    if (id.startsWith("local-")) return Response.json({ error: "Connect Supabase to duplicate this banner." }, { status: 409 });
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: readError } = await supabase.from("hero_slides").select("*").eq("id", id).maybeSingle();
+    if (readError) throw readError;
+    if (!existing) return Response.json({ error: "Banner not found." }, { status: 404 });
+    const imagePath = `slides/${crypto.randomUUID()}.webp`;
+    const { error: copyError } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).copy(existing.image_path, imagePath);
+    if (copyError) throw copyError;
+    const imageUrl = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(imagePath).data.publicUrl;
+    const fields = Object.fromEntries(Object.entries(existing).filter(([key]) => !["id", "created_at", "updated_at"].includes(key)));
+    const { data, error } = await supabase.from("hero_slides").insert({ ...fields, title: `${existing.title} Copy`.slice(0, 100), image_path: imagePath, image_url: imageUrl, sort_order: Number(existing.sort_order) + 1, active: false }).select("*").single();
+    if (error) { await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([imagePath]); throw error; }
+    return Response.json(data, { status: 201 });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Unable to duplicate banner." }, { status: 500 });
+  }
+}
+
 export async function DELETE(_request: Request, context: RouteContext<"/api/slides/[id]">) {
   const unauthorized = await requireAdminAccess();
   if (unauthorized) return unauthorized;

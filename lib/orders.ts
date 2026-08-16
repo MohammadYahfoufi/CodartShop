@@ -14,7 +14,7 @@ export async function getAdminOverview(): Promise<{
     const [ordersResult, favoritesResult] = await Promise.all([
       supabase
         .from("orders")
-        .select("id,customer_name,customer_phone,customer_note,total,status,created_at,order_items(id,product_title,unit_price,quantity)")
+        .select("id,customer_name,customer_phone,customer_email,delivery_address,delivery_area,delivery_fee,payment_method,customer_note,subtotal,total,status,created_at,order_items(id,product_title,unit_price,quantity)")
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("favorites").select("product_id", { count: "exact", head: true }),

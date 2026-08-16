@@ -9,8 +9,9 @@ import {
   isSupabaseTemporarilyUnavailable,
   markSupabaseAvailable,
   markSupabaseUnavailable,
+  isLocalPersistenceEnabled,
 } from "@/lib/supabase-server";
-import type { PaginatedProducts, Product } from "@/lib/types";
+import type { PaginatedProducts, Product, ProductQueryOptions } from "@/lib/types";
 
 function reportSupabaseError(context: string, error: unknown) {
   console.warn(
@@ -21,7 +22,7 @@ function reportSupabaseError(context: string, error: unknown) {
 
 export async function getProducts(): Promise<Product[]> {
   if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
-    return getManagedLocalProducts();
+    return isLocalPersistenceEnabled ? getManagedLocalProducts() : [];
   }
 
   try {
@@ -36,7 +37,7 @@ export async function getProducts(): Promise<Product[]> {
   } catch (error) {
     markSupabaseUnavailable();
     reportSupabaseError("Unable to load products from Supabase", error);
-    return getManagedLocalProducts();
+    return isLocalPersistenceEnabled ? getManagedLocalProducts() : [];
   }
 }
 
@@ -44,11 +45,14 @@ export async function getProductsPage(
   requestedPage = 1,
   requestedPageSize = 6,
   requestedSearch = "",
+  options: ProductQueryOptions = {},
 ): Promise<PaginatedProducts> {
   const pageSize = Math.min(24, Math.max(1, requestedPageSize));
   const search = requestedSearch.trim().slice(0, 80);
   if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
-    return await getLocalProductsPage(requestedPage, pageSize, search);
+    return isLocalPersistenceEnabled
+      ? await getLocalProductsPage(requestedPage, pageSize, search, options)
+      : { products: [], page: 1, pageSize, total: 0, totalPages: 1, categories: [] };
   }
 
   try {
@@ -57,8 +61,7 @@ export async function getProductsPage(
     const to = from + pageSize - 1;
     let query = getSupabaseAdmin()
       .from("products")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false });
+      .select("*", { count: "exact" });
 
     if (search) {
       const safeSearch = search.replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
@@ -67,17 +70,25 @@ export async function getProductsPage(
       }
     }
 
+    const category = String(options.category ?? "").trim().slice(0, 80);
+    if (category) query = query.eq("category", category);
+    if (options.featured) query = query.eq("featured", true);
+    if (options.sort === "price-asc") query = query.order("price", { ascending: true });
+    else if (options.sort === "price-desc") query = query.order("price", { ascending: false });
+    else query = query.order("created_at", { ascending: false });
+
     const { data, error, count } = await query
       .range(from, to);
 
     if (error) throw error;
     markSupabaseAvailable();
     const total = count ?? 0;
-    if (!total && !search) return await getLocalProductsPage(requestedPage, pageSize);
+    const { data: categoryRows } = await getSupabaseAdmin().from("products").select("category").not("category", "is", null);
+    const categories = [...new Set((categoryRows ?? []).map((row) => String(row.category)).filter(Boolean))].sort();
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     if (requested > totalPages) {
-      return getProductsPage(totalPages, pageSize, search);
+      return getProductsPage(totalPages, pageSize, search, options);
     }
 
     return {
@@ -86,16 +97,19 @@ export async function getProductsPage(
       pageSize,
       total,
       totalPages,
+      categories,
     };
   } catch (error) {
     markSupabaseUnavailable();
     reportSupabaseError("Unable to load products from Supabase", error);
-    return await getLocalProductsPage(requestedPage, pageSize, search);
+    return isLocalPersistenceEnabled
+      ? await getLocalProductsPage(requestedPage, pageSize, search, options)
+      : { products: [], page: 1, pageSize, total: 0, totalPages: 1, categories: [] };
   }
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const localProduct = await getLocalProduct(id);
+  const localProduct = isLocalPersistenceEnabled ? await getLocalProduct(id) : null;
   if (localProduct) return localProduct;
   if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) return null;
 

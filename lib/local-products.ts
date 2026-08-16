@@ -4,7 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { localCatalog } from "@/lib/catalog";
 import { isLocalPersistenceEnabled } from "@/lib/supabase-server";
-import type { PaginatedProducts, Product } from "@/lib/types";
+import type { PaginatedProducts, Product, ProductQueryOptions } from "@/lib/types";
 
 const dataDirectory = path.join(process.cwd(), "data");
 const productsFile = path.join(dataDirectory, "products.json");
@@ -51,6 +51,11 @@ export async function createLocalProduct(input: {
   description: string;
   price: number;
   image: File;
+  category?: string;
+  salePrice?: number | null;
+  stockQuantity?: number;
+  featured?: boolean;
+  specifications?: Record<string, string>;
 }) {
   const products = await getManagedLocalProducts();
   const id = `local-${crypto.randomUUID()}`;
@@ -61,6 +66,12 @@ export async function createLocalProduct(input: {
     title: input.title,
     description: input.description,
     price: input.price,
+    sale_price: input.salePrice ?? null,
+    category: input.category ?? "Accessories",
+    stock_quantity: input.stockQuantity ?? 10,
+    featured: input.featured ?? false,
+    specifications: input.specifications ?? {},
+    images: [{ url: image.image_url, path: image.image_path, alt: input.title }],
     ...image,
     created_at: timestamp,
     updated_at: timestamp,
@@ -71,7 +82,7 @@ export async function createLocalProduct(input: {
 
 export async function updateLocalProduct(
   id: string,
-  input: { title: string; description: string; price: number; image?: File },
+  input: { title: string; description: string; price: number; image?: File; category?: string; salePrice?: number | null; stockQuantity?: number; featured?: boolean; specifications?: Record<string, string> },
 ) {
   const products = await getManagedLocalProducts();
   const existing = products.find((product) => product.id === id);
@@ -85,6 +96,12 @@ export async function updateLocalProduct(
     title: input.title,
     description: input.description,
     price: input.price,
+    sale_price: input.salePrice ?? existing.sale_price ?? null,
+    category: input.category ?? existing.category ?? "Accessories",
+    stock_quantity: input.stockQuantity ?? existing.stock_quantity ?? 10,
+    featured: input.featured ?? existing.featured ?? false,
+    specifications: input.specifications ?? existing.specifications ?? {},
+    images: input.image ? [{ url: nextImage.image_url, path: nextImage.image_path, alt: input.title }] : existing.images,
     ...nextImage,
     updated_at: new Date().toISOString(),
   };
@@ -111,15 +128,20 @@ export async function getLocalProductsPage(
   requestedPage = 1,
   requestedPageSize = 6,
   search = "",
+  options: ProductQueryOptions = {},
 ): Promise<PaginatedProducts> {
   const pageSize = Math.min(24, Math.max(1, requestedPageSize));
   const term = search.trim().toLowerCase();
   const allProducts = [...await getManagedLocalProducts(), ...localCatalog];
-  const matchingProducts = term
+  let matchingProducts = term
     ? allProducts.filter((product) =>
         `${product.title} ${product.description}`.toLowerCase().includes(term),
       )
     : allProducts;
+  if (options.category) matchingProducts = matchingProducts.filter((product) => product.category === options.category);
+  if (options.featured) matchingProducts = matchingProducts.filter((product) => product.featured);
+  if (options.sort === "price-asc") matchingProducts.sort((a, b) => (a.sale_price ?? a.price) - (b.sale_price ?? b.price));
+  else if (options.sort === "price-desc") matchingProducts.sort((a, b) => (b.sale_price ?? b.price) - (a.sale_price ?? a.price));
   const total = matchingProducts.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(totalPages, Math.max(1, requestedPage));
@@ -130,5 +152,6 @@ export async function getLocalProductsPage(
     pageSize,
     total,
     totalPages,
+    categories: [...new Set(allProducts.map((product) => product.category ?? "Accessories"))].sort(),
   };
 }

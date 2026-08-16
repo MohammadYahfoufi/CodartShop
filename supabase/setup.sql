@@ -9,6 +9,12 @@ create table if not exists public.products (
   image_url text not null,
   image_path text not null,
   price numeric(12, 2) not null check (price >= 0),
+  sale_price numeric(12, 2) check (sale_price is null or sale_price >= 0),
+  category text not null default 'Accessories',
+  stock_quantity integer not null default 10 check (stock_quantity >= 0),
+  featured boolean not null default false,
+  specifications jsonb not null default '{}'::jsonb,
+  images jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -18,9 +24,15 @@ create table if not exists public.orders (
   user_id uuid references auth.users(id) on delete set null,
   customer_name text not null check (char_length(customer_name) between 1 and 120),
   customer_phone text not null check (char_length(customer_phone) between 3 and 40),
+  customer_email text not null default '',
+  delivery_address text not null default '',
+  delivery_area text not null default 'beirut' check (delivery_area in ('beirut', 'mount-lebanon', 'north', 'south', 'bekaa')),
+  delivery_fee numeric(12, 2) not null default 0 check (delivery_fee >= 0),
+  payment_method text not null default 'cash-on-delivery' check (payment_method in ('cash-on-delivery', 'whish-money', 'bank-transfer')),
   customer_note text not null default '' check (char_length(customer_note) <= 1000),
+  subtotal numeric(12, 2) not null default 0 check (subtotal >= 0),
   total numeric(12, 2) not null check (total >= 0),
-  status text not null default 'pending' check (status in ('pending', 'confirmed', 'fulfilled', 'cancelled')),
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -85,6 +97,9 @@ create index if not exists hero_slides_order_idx on public.hero_slides(active, s
 create index if not exists analytics_daily_day_idx on public.analytics_daily(day desc);
 create index if not exists products_title_search_idx on public.products using gin (title gin_trgm_ops);
 create index if not exists products_description_search_idx on public.products using gin (description gin_trgm_ops);
+create index if not exists products_category_idx on public.products(category);
+create index if not exists products_featured_idx on public.products(featured, created_at desc);
+create index if not exists products_stock_idx on public.products(stock_quantity);
 
 alter table public.products enable row level security;
 alter table public.orders enable row level security;

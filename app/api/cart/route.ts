@@ -1,6 +1,7 @@
 import { localCatalog } from "@/lib/catalog";
 import { getAuthClaims } from "@/lib/supabase-auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { isLocalPersistenceEnabled } from "@/lib/supabase-server";
 import type { CartItem, Product } from "@/lib/types";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,7 +32,7 @@ function normalizeItems(value: unknown): CartInput[] | null {
 
 async function productsById(productIds: string[]) {
   const databaseIds = productIds.filter((id) => uuidPattern.test(id));
-  const localById = new Map(localCatalog.map((product) => [product.id, product]));
+  const localById = new Map((isLocalPersistenceEnabled ? localCatalog : []).map((product) => [product.id, product]));
   const { data, error } = databaseIds.length
     ? await getSupabaseAdmin().from("products").select("*").in("id", databaseIds)
     : { data: [], error: null };

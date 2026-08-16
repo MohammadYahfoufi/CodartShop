@@ -19,6 +19,7 @@ import { ProductGridSkeleton } from "@/components/skeletons";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { AuthButton } from "@/components/auth-button";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { deliveryAreas, getDeliveryArea, getPaymentMethod, paymentMethods } from "@/lib/checkout";
 import {
   CART_KEY,
   FAVORITES_KEY,
@@ -45,7 +46,11 @@ type StorefrontProps = {
   heroSlides?: HeroSlide[];
 };
 
-const emptyDetails: CheckoutDetails = { name: "", phone: "", note: "" };
+const emptyDetails: CheckoutDetails = { name: "", email: "", phone: "", address: "", area: "beirut", paymentMethod: "cash-on-delivery", note: "" };
+
+function productPrice(product: Product) {
+  return product.sale_price != null && product.sale_price < product.price ? product.sale_price : product.price;
+}
 
 function createVisitorId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -73,6 +78,14 @@ function mergeCarts(...carts: CartItem[][]) {
   return [...merged.values()];
 }
 
+function ProductDetailsModal({ product, onClose, onAdd }: { product: Product; onClose: () => void; onAdd: (product: Product) => void }) {
+  const gallery = product.images?.length ? product.images : [{ url: product.image_url, path: product.image_path, alt: product.title }];
+  const [activeImage, setActiveImage] = useState(gallery[0]?.url ?? product.image_url);
+  const specifications = Object.entries(product.specifications ?? {});
+  const soldOut = (product.stock_quantity ?? 10) <= 0;
+  return <><div className="drawer-backdrop is-open" onClick={onClose} /><section className="product-modal" role="dialog" aria-modal="true" aria-label={product.title}><button type="button" className="icon-button product-modal-close" onClick={onClose} aria-label="Close product details"><CloseIcon /></button><div className="product-gallery"><div className="product-gallery-main"><ProductVisual src={activeImage} alt={product.title} /></div>{gallery.length > 1 && <div className="product-gallery-thumbs">{gallery.map((image) => <button type="button" className={activeImage === image.url ? "is-active" : ""} key={image.path} onClick={() => setActiveImage(image.url)}><ProductVisual src={image.url} alt={image.alt ?? product.title} /></button>)}</div>}</div><div className="product-modal-copy">{product.category && <p className="eyebrow">{product.category}</p>}<h2>{product.title}</h2><p>{product.description}</p><div className="product-modal-price">{product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}<strong>{money.format(productPrice(product))}</strong></div><span className={`inventory-label ${soldOut ? "is-out" : ""}`}>{soldOut ? "Out of stock" : `${product.stock_quantity ?? 10} in stock`}</span>{specifications.length > 0 && <dl className="product-specifications">{specifications.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl>}<button type="button" className="primary-button" disabled={soldOut} onClick={() => { onAdd(product); onClose(); }}>{soldOut ? "Unavailable" : "Add to cart"}<PlusIcon /></button></div></section></>;
+}
+
 export function Storefront({
   initialPage,
   initialFilter = "all",
@@ -91,6 +104,10 @@ export function Storefront({
   );
   const [details, setDetails] = useState<CheckoutDetails>(emptyDetails);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -205,16 +222,16 @@ export function Storefront({
   }, [favoriteIds, hydrated]);
 
   useEffect(() => {
-    document.body.style.overflow = cartOpen ? "hidden" : "";
+    document.body.style.overflow = cartOpen || selectedProduct ? "hidden" : "";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCartOpen(false);
+      if (event.key === "Escape") { setCartOpen(false); setSelectedProduct(null); }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [cartOpen]);
+  }, [cartOpen, selectedProduct]);
 
   useEffect(() => {
     if (!focusProductId) return;
@@ -223,8 +240,9 @@ export function Storefront({
         behavior: "smooth",
         block: "center",
       });
+      setSelectedProduct(productPage.products.find((product) => product.id === focusProductId) ?? null);
     });
-  }, [focusProductId]);
+  }, [focusProductId, productPage.products]);
 
   useEffect(() => {
     if (!searchMountedRef.current) {
@@ -242,6 +260,9 @@ export function Storefront({
           pageSize: String(productPage.pageSize),
         });
         if (query.trim()) parameters.set("q", query.trim());
+        if (category) parameters.set("category", category);
+        if (sort) parameters.set("sort", sort);
+        if (featuredOnly) parameters.set("featured", "true");
         const response = await fetch(`/api/products?${parameters}`, {
           signal: controller.signal,
         });
@@ -262,7 +283,7 @@ export function Storefront({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, productPage.pageSize]);
+  }, [query, category, sort, featuredOnly, productPage.pageSize]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -277,7 +298,9 @@ export function Storefront({
   }, [favoriteIds, filter, productPage.products, query]);
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + productPrice(item) * item.quantity, 0);
+  const selectedDelivery = getDeliveryArea(details.area) ?? deliveryAreas[0];
+  const checkoutTotal = subtotal + selectedDelivery.fee;
   const visibleStart = productPage.total
     ? (productPage.page - 1) * productPage.pageSize + 1
     : 0;
@@ -322,6 +345,9 @@ export function Storefront({
         pageSize: String(productPage.pageSize),
       });
       if (query.trim()) parameters.set("q", query.trim());
+      if (category) parameters.set("category", category);
+      if (sort) parameters.set("sort", sort);
+      if (featuredOnly) parameters.set("featured", "true");
       const response = await fetch(`/api/products?${parameters}`);
       if (!response.ok) throw new Error("Unable to load this page.");
       if (searchRequestRef.current !== requestId) return;
@@ -338,12 +364,14 @@ export function Storefront({
   }
 
   function addToCart(product: Product) {
+    if ((product.stock_quantity ?? 10) <= 0) return;
     setCart((items) => {
       const existing = items.find((item) => item.id === product.id);
+      const maximum = product.stock_quantity ?? 10;
       return existing
         ? items.map((item) =>
             item.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
+              ? { ...item, quantity: Math.min(maximum, item.quantity + 1) }
               : item,
           )
         : [...items, { ...product, quantity: 1 }];
@@ -355,7 +383,7 @@ export function Storefront({
     setCart((items) =>
       items
         .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity + amount } : item,
+          item.id === id ? { ...item, quantity: Math.min(item.stock_quantity ?? 10, item.quantity + amount) } : item,
         )
         .filter((item) => item.quantity > 0),
     );
@@ -405,12 +433,18 @@ export function Storefront({
         "",
         ...cart.map(
           (item, index) =>
-            `${index + 1}. ${item.title} × ${item.quantity} — ${money.format(item.price * item.quantity)}`,
+            `${index + 1}. ${item.title} × ${item.quantity} — ${money.format(productPrice(item) * item.quantity)}`,
         ),
         "",
+        `Subtotal: ${money.format(receipt.subtotal)}`,
+        `Delivery: ${money.format(receipt.deliveryFee)}`,
         `Total: ${money.format(receipt.total)}`,
         ...(details.name ? ["", `Name: ${details.name}`] : []),
         ...(details.phone ? [`Phone: ${details.phone}`] : []),
+        ...(details.email ? [`Email: ${details.email}`] : []),
+        ...(details.address ? [`Address: ${details.address}`] : []),
+        `Area: ${selectedDelivery.label}`,
+        `Payment: ${getPaymentMethod(details.paymentMethod)?.label ?? details.paymentMethod}`,
         ...(details.note ? [`Note: ${details.note}`] : []),
         "",
         "Please confirm availability. Thank you!",
@@ -423,6 +457,7 @@ export function Storefront({
       setCart([]);
       setDetails(emptyDetails);
       setCartOpen(false);
+      window.location.assign(`/order-confirmation?order=${encodeURIComponent(receipt.id)}&total=${encodeURIComponent(String(receipt.total))}`);
     } catch (error) {
       setOrderError(error instanceof Error ? error.message : "Unable to save your order.");
     } finally {
@@ -513,6 +548,17 @@ export function Storefront({
             </div>
           </div>
 
+          {filter === "all" && <div className="catalog-controls" aria-label="Catalog filters">
+            <div className="category-filters">
+              <button type="button" className={!category ? "is-active" : ""} onClick={() => setCategory("")}>All</button>
+              {(productPage.categories ?? []).map((item) => <button type="button" className={category === item ? "is-active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}
+            </div>
+            <div className="catalog-selects">
+              <label><span className="sr-only">Featured filter</span><select value={featuredOnly ? "featured" : "all"} onChange={(event) => setFeaturedOnly(event.target.value === "featured")}><option value="all">All products</option><option value="featured">Featured only</option></select></label>
+              <label><span className="sr-only">Sort products</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="newest">Newest</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></label>
+            </div>
+          </div>}
+
           <div className="catalog-status" aria-live="polite">
             <span>
               {catalogLoading
@@ -535,21 +581,24 @@ export function Storefront({
                     <div className="product-media">
                       <ProductVisual src={product.image_url} alt={product.title} priority={index < 2} />
                       <span className="product-index">{String(index + 1).padStart(2, "0")}</span>
+                      <div className="product-badges">{product.featured && <span>Featured</span>}{product.sale_price != null && product.sale_price < product.price && <span className="sale-badge">Sale {Math.round((1 - product.sale_price / product.price) * 100)}%</span>}{(product.stock_quantity ?? 10) <= 0 && <span className="stock-badge">Out of stock</span>}</div>
                       <button type="button" data-analytics="favorite_product" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => toggleFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
                     </div>
                     <div className="product-card-body">
-                      <Link href={`/products/${product.id}`} data-analytics="open_product"><h3>{product.title}</h3></Link>
+                      <button type="button" className="product-title-button" data-analytics="open_product" onClick={() => setSelectedProduct(product)}><h3>{product.title}</h3></button>
+                      {product.category && <span className="product-category">{product.category}</span>}
                       <p>{product.description}</p>
                       <div className="product-action">
-                        <strong>{money.format(product.price)}</strong>
+                        <strong className={product.sale_price != null && product.sale_price < product.price ? "sale-price" : ""}>{product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}{money.format(productPrice(product))}</strong>
                         <button
                           type="button"
                           data-analytics="add_to_cart"
                           className={quantityInCart ? "is-in-cart" : ""}
                           onClick={() => addToCart(product)}
+                          disabled={(product.stock_quantity ?? 10) <= 0}
                           aria-label={`Add ${product.title} to cart${quantityInCart ? `, ${quantityInCart} currently in cart` : ""}`}
                         >
-                          {quantityInCart ? `In cart · ${quantityInCart}` : "Add to cart"}
+                          {(product.stock_quantity ?? 10) <= 0 ? "Out of stock" : quantityInCart ? `In cart · ${quantityInCart}` : "Add to cart"}
                           <PlusIcon />
                         </button>
                       </div>
@@ -607,6 +656,8 @@ export function Storefront({
         </div>
       </footer>
 
+      {selectedProduct && <ProductDetailsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />}
+
       {cartOpen && (
         <>
           <div className="drawer-backdrop is-open" onClick={() => setCartOpen(false)} />
@@ -619,11 +670,16 @@ export function Storefront({
         {checkoutStep === "details" && cart.length ? (
           <form className="checkout-form" onSubmit={sendToWhatsApp}>
             <button type="button" className="checkout-back" onClick={() => setCheckoutStep("cart")}><ArrowIcon /> Back to cart</button>
-            <div className="checkout-summary"><span>{itemCount} {itemCount === 1 ? "item" : "items"}</span><strong>{money.format(total)}</strong></div>
+            <div className="checkout-summary"><span>{itemCount} {itemCount === 1 ? "item" : "items"}</span><strong>{money.format(checkoutTotal)}</strong></div>
             <label><span>Name</span><input required value={details.name} onChange={(event) => setDetails({ ...details, name: event.target.value })} placeholder="Your name" autoComplete="name" /></label>
+            <label><span>Email</span><input required value={details.email} onChange={(event) => setDetails({ ...details, email: event.target.value })} placeholder="you@example.com" type="email" autoComplete="email" /></label>
             <label><span>Phone</span><input required value={details.phone} onChange={(event) => setDetails({ ...details, phone: event.target.value })} placeholder="Your phone number" type="tel" autoComplete="tel" /></label>
+            <label><span>Delivery address</span><textarea required value={details.address} onChange={(event) => setDetails({ ...details, address: event.target.value })} placeholder="Street, building, floor, and landmark" rows={3} autoComplete="street-address" /></label>
+            <label><span>Delivery area</span><select value={details.area} onChange={(event) => setDetails({ ...details, area: event.target.value as CheckoutDetails["area"] })}>{deliveryAreas.map((area) => <option value={area.value} key={area.value}>{area.label} · {money.format(area.fee)}</option>)}</select></label>
+            <label><span>Payment method</span><select value={details.paymentMethod} onChange={(event) => setDetails({ ...details, paymentMethod: event.target.value as CheckoutDetails["paymentMethod"] })}>{paymentMethods.map((method) => <option value={method.value} key={method.value}>{method.label}</option>)}</select></label>
             <label><span>Order note <small>Optional</small></span><textarea value={details.note} onChange={(event) => setDetails({ ...details, note: event.target.value })} placeholder="Color, delivery area, or anything else" rows={4} /></label>
-            <div className="checkout-note"><WhatsAppIcon /><p><strong>Checkout happens on WhatsApp</strong><span>We’ll confirm stock, delivery, and payment with you directly.</span></p></div>
+            <div className="checkout-costs"><span>Subtotal <b>{money.format(subtotal)}</b></span><span>Delivery <b>{money.format(selectedDelivery.fee)}</b></span><strong>Total <b>{money.format(checkoutTotal)}</b></strong></div>
+            <div className="checkout-note"><WhatsAppIcon /><p><strong>Checkout continues on WhatsApp</strong><span>You’ll also receive an email receipt when email delivery is configured.</span></p></div>
             {orderError && <p className="checkout-error" role="alert">{orderError}</p>}
             <button className="whatsapp-button" type="submit" disabled={orderSubmitting}><WhatsAppIcon />{orderSubmitting ? "Saving order…" : "Save & send via WhatsApp"}</button>
           </form>
@@ -636,7 +692,7 @@ export function Storefront({
                 <div className="cart-item" key={item.id}>
                   <div className="cart-thumb"><ProductVisual src={item.image_url} alt={item.title} /></div>
                   <div className="cart-item-info">
-                    <div><h3>{item.title}</h3><strong>{money.format(item.price * item.quantity)}</strong></div>
+                    <div><h3>{item.title}</h3><strong>{money.format(productPrice(item) * item.quantity)}</strong></div>
                     <div className="quantity-control"><button type="button" onClick={() => changeQuantity(item.id, -1)} aria-label={`Remove one ${item.title}`}><MinusIcon /></button><span>{item.quantity}</span><button type="button" onClick={() => changeQuantity(item.id, 1)} aria-label={`Add one ${item.title}`}><PlusIcon /></button></div>
                   </div>
                   <button type="button" className="remove-button" onClick={() => setCart((items) => items.filter((product) => product.id !== item.id))} aria-label={`Remove ${item.title}`}><TrashIcon /></button>
@@ -645,7 +701,7 @@ export function Storefront({
             </div>
             {cart.length > 0 && (
               <div className="cart-footer">
-                <div className="cart-total"><span>Total</span><strong>{money.format(total)}</strong></div>
+                <div className="cart-total"><span>Subtotal</span><strong>{money.format(subtotal)}</strong></div>
                 <p>Taxes and delivery, if applicable, are confirmed before payment.</p>
                 <button type="button" className="whatsapp-button" onClick={() => setCheckoutStep("details")}>Continue to order <ArrowIcon /></button>
               </div>
