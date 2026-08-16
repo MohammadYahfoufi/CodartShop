@@ -83,7 +83,10 @@ export function BannerManager({ initialSlides }: { initialSlides: HeroSlide[] })
   async function removeSlide(slide: HeroSlide) {
     if (!confirm(`Delete banner “${slide.title}”?`)) return;
     const response = await fetch(`/api/slides/${slide.id}`, { method: "DELETE" });
-    if (!response.ok) return alert("Unable to delete banner.");
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({ error: "Unable to delete banner." }));
+      return alert(result.error ?? "Unable to delete banner.");
+    }
     setSlides((items) => items.filter((item) => item.id !== slide.id));
   }
 

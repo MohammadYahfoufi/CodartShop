@@ -40,9 +40,12 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/slid
     const { data, error: readError } = await supabase.from("hero_slides").select("image_path").eq("id", id).maybeSingle();
     if (readError) throw readError;
     if (!data) return Response.json({ error: "Banner not found." }, { status: 404 });
-    const { error } = await supabase.from("hero_slides").delete().eq("id", id);
-    if (error) throw error;
-    await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([data.image_path]);
+    const { error: storageError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .remove([data.image_path]);
+    if (storageError) throw new Error(`Unable to delete the banner image: ${storageError.message}`);
+    const { error: deleteError } = await supabase.from("hero_slides").delete().eq("id", id);
+    if (deleteError) throw new Error(`Unable to delete the banner record: ${deleteError.message}`);
     return new Response(null, { status: 204 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to delete banner." }, { status: 500 });
