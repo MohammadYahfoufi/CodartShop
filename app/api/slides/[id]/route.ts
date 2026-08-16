@@ -1,5 +1,5 @@
 import { deleteLocalSlide, updateLocalSlide } from "@/lib/slides";
-import { getSupabaseAdmin, PRODUCT_IMAGES_BUCKET } from "@/lib/supabase-server";
+import { getSupabaseAdmin, isLocalPersistenceEnabled, PRODUCT_IMAGES_BUCKET } from "@/lib/supabase-server";
 import { requireAdminAccess } from "@/lib/supabase-auth-server";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/slides/[id]">) {
@@ -13,6 +13,9 @@ export async function PATCH(request: Request, context: RouteContext<"/api/slides
     if (Number.isInteger(body?.sort_order)) updates.sort_order = body.sort_order;
     if (!Object.keys(updates).length) return Response.json({ error: "No valid changes supplied." }, { status: 400 });
     if (id.startsWith("local-")) {
+      if (!isLocalPersistenceEnabled) {
+        return Response.json({ error: "This development-only banner is not stored in production. Publish a new banner to migrate it to Supabase Storage." }, { status: 409 });
+      }
       const slide = await updateLocalSlide(id, updates);
       return slide ? Response.json(slide) : Response.json({ error: "Banner not found." }, { status: 404 });
     }
@@ -30,6 +33,7 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/slid
   try {
     const { id } = await context.params;
     if (id.startsWith("local-")) {
+      if (!isLocalPersistenceEnabled) return new Response(null, { status: 204 });
       return await deleteLocalSlide(id) ? new Response(null, { status: 204 }) : Response.json({ error: "Banner not found." }, { status: 404 });
     }
     const supabase = getSupabaseAdmin();

@@ -41,6 +41,7 @@ async function saveLocalImage(id: string, image: File) {
 
 export async function getHeroSlides(includeInactive = false): Promise<HeroSlide[]> {
   if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    if (!isLocalPersistenceEnabled) return [];
     const slides = await readLocalSlides();
     return slides.filter((slide) => includeInactive || slide.active).sort((a, b) => a.sort_order - b.sort_order);
   }
@@ -53,7 +54,8 @@ export async function getHeroSlides(includeInactive = false): Promise<HeroSlide[
     return (data ?? []) as HeroSlide[];
   } catch (error) {
     markSupabaseUnavailable();
-    console.warn("Unable to load hero slides; using local slides:", error);
+    console.warn("Unable to load hero slides from Supabase:", error);
+    if (!isLocalPersistenceEnabled) return [];
     const slides = await readLocalSlides();
     return slides.filter((slide) => includeInactive || slide.active).sort((a, b) => a.sort_order - b.sort_order);
   }
