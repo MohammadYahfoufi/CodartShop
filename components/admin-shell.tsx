@@ -25,7 +25,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     sales: <path d="M4 19V9M10 19V5M16 19v-7M22 19V3" />,
     analytics: <><path d="M4 19V9M10 19v-5M16 19V5M22 19V2" /><path d="m4 6 6 3 6-6 6 2" /></>,
   };
-  return <svg className="admin-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+  return <span className="admin-nav-icon-frame" aria-hidden="true"><svg className="admin-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg></span>;
 }
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -40,7 +40,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <nav aria-label="Admin sections">
           {navigation.map((item) => {
             const active = item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
-            return <Link key={item.href} href={item.href} className={active ? "is-active" : ""} aria-current={active ? "page" : undefined}><AdminIcon name={item.icon} /><span>{item.label}</span><small>{item.mark}</small></Link>;
+            return <Link key={item.href} href={item.href} className={active ? "is-active" : ""} aria-current={active ? "page" : undefined} title={item.label}><AdminIcon name={item.icon} /><span>{item.label}</span><small className="admin-nav-index" aria-hidden="true">{item.mark}</small></Link>;
           })}
         </nav>
         <div className="admin-sidebar-footer"><span className="admin-store-status"><i />Store online</span><Link href="/"><span>Open storefront</span><b aria-hidden="true">↗</b></Link></div>
