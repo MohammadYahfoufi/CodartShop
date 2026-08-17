@@ -16,33 +16,84 @@ function GoogleIcon() {
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState<"email" | "google" | "">("");
+  const [otp, setOtp] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [busy, setBusy] = useState<"email" | "verify" | "google" | "">("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  async function emailLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function requestEmailCode() {
     const supabase = createSupabaseBrowserClient();
-    if (!supabase) return setError("Account login needs the Supabase publishable key in .env.local.");
-    setBusy("email"); setError(""); setMessage("");
-    const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination())}`;
+    if (!supabase) {
+      setError("Account login needs the Supabase publishable key in .env.local.");
+      return;
+    }
+
+    setBusy("email");
+    setError("");
+    setMessage("");
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: redirect, shouldCreateUser: true },
+      options: { shouldCreateUser: true },
     });
     setBusy("");
-    if (authError) setError(authError.message);
-    else setMessage("Check your email. We sent you a secure sign-in link.");
+
+    if (authError) {
+      setError(authError.message);
+      return;
+    }
+
+    setCodeSent(true);
+    setOtp("");
+    setMessage(`Enter the six-digit code sent to ${email.trim()}.`);
+  }
+
+  async function emailLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await requestEmailCode();
+  }
+
+  async function verifyEmailCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) {
+      setError("Account login needs the Supabase publishable key in .env.local.");
+      return;
+    }
+
+    setBusy("verify");
+    setError("");
+    const { error: authError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: otp,
+      type: "email",
+    });
+    setBusy("");
+
+    if (authError) {
+      setError(authError.message);
+      return;
+    }
+
+    window.location.assign(destination());
+  }
+
+  function changeEmail() {
+    setCodeSent(false);
+    setOtp("");
+    setMessage("");
+    setError("");
   }
 
   async function googleLogin() {
     const supabase = createSupabaseBrowserClient();
     if (!supabase) return setError("Account login needs the Supabase publishable key in .env.local.");
-    setBusy("google"); setError("");
+    setBusy("google");
+    setError("");
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination())}`;
     const { error: authError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
     if (authError) { setBusy(""); setError(authError.message); }
   }
 
-  return <main className="auth-page"><section className="auth-card"><Link href="/" className="auth-logo" aria-label="Codart home"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></Link><div className="auth-heading"><span>YOUR CODART ACCOUNT</span><h1>Save what<br />you love.</h1><p>Sign in to keep favourites connected to your account across browsers and devices.</p></div><button type="button" className="google-login" onClick={googleLogin} disabled={Boolean(busy) || !isBrowserAuthConfigured}><GoogleIcon /><span>{busy === "google" ? "Connecting…" : "Continue with Google"}</span></button><div className="auth-divider"><span>or use email</span></div><form onSubmit={emailLogin}><label htmlFor="login-email">Email address</label><input id="login-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required /><button type="submit" className="email-login" disabled={Boolean(busy) || !isBrowserAuthConfigured}>{busy === "email" ? "Sending secure link…" : "Email me a sign-in link"}</button></form>{message && <p className="auth-message is-success">{message}</p>}{error && <p className="auth-message is-error">{error}</p>}{!isBrowserAuthConfigured && <p className="auth-message is-error">Supabase Auth is not configured yet. Add the publishable key to enable login.</p>}<p className="auth-terms">By continuing, you agree to use Codart responsibly. No password required.</p><Link className="auth-back" href="/">← Back to the shop</Link></section><aside className="auth-visual"><div><span>ONE ACCOUNT</span><strong>Saved everywhere.</strong><p>Your favourites stay with you—even when you switch devices.</p></div></aside></main>;
+  return <main className="auth-page"><section className="auth-card"><Link href="/" className="auth-logo" aria-label="Codart home"><Image src="/codart-logo.png" alt="Codart" width={512} height={512} priority /></Link><div className="auth-heading"><span>YOUR CODART ACCOUNT</span><h1>Save what<br />you love.</h1><p>Sign in to keep favourites connected to your account across browsers and devices.</p></div><button type="button" className="google-login" onClick={googleLogin} disabled={Boolean(busy) || !isBrowserAuthConfigured}><GoogleIcon /><span>{busy === "google" ? "Connecting…" : "Continue with Google"}</span></button><div className="auth-divider"><span>or use email</span></div>{codeSent ? <form onSubmit={verifyEmailCode}><label htmlFor="login-otp">Six-digit code</label><input id="login-otp" className="otp-input" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" pattern="[0-9]{6}" maxLength={6} autoFocus required /><button type="submit" className="email-login" disabled={Boolean(busy) || otp.length !== 6 || !isBrowserAuthConfigured}>{busy === "verify" ? "Checking code…" : "Sign in with code"}</button><div className="auth-form-actions"><button type="button" onClick={requestEmailCode} disabled={Boolean(busy)}>Resend code</button><button type="button" onClick={changeEmail} disabled={Boolean(busy)}>Use another email</button></div></form> : <form onSubmit={emailLogin}><label htmlFor="login-email">Email address</label><input id="login-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required /><button type="submit" className="email-login" disabled={Boolean(busy) || !isBrowserAuthConfigured}>{busy === "email" ? "Sending code…" : "Email me a sign-in code"}</button></form>}{message && <p className="auth-message is-success">{message}</p>}{error && <p className="auth-message is-error">{error}</p>}{!isBrowserAuthConfigured && <p className="auth-message is-error">Supabase Auth is not configured yet. Add the publishable key to enable login.</p>}<p className="auth-terms">By continuing, you agree to use Codart responsibly. No password required.</p><Link className="auth-back" href="/">← Back to the shop</Link></section><aside className="auth-visual"><div><span>ONE ACCOUNT</span><strong>Saved everywhere.</strong><p>Your favourites stay with you—even when you switch devices.</p></div></aside></main>;
 }

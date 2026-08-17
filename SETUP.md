@@ -28,14 +28,14 @@ NEXT_PUBLIC_WHATSAPP_NUMBER=9647501234567
 ### Branded login email
 
 1. In **Supabase → Authentication → Email Templates**, open **Magic Link**.
-2. Set the subject to `Your secure Codart sign-in link`.
+2. Set the subject to `Your secure Codart sign-in code`.
 3. Copy the complete contents of `supabase/email-templates/magic-link.html` into the template body and save it.
 4. In **Authentication → SMTP Settings**, enable custom SMTP and enter the host, port, username, and password supplied by your email provider. Set the sender name to `Codart` and use a verified sender address such as `login@your-domain.com`.
 5. Disable click/email tracking in the SMTP provider because rewritten authentication links can fail.
 
 Changing the HTML controls the design. A custom SMTP provider is required to replace Supabase's sender name and is also required for reliable production delivery to customers outside the Supabase project team.
 
-The supplied template sends `token_hash` and `type=email` directly to the allowed `/auth/callback` URL. Keep those template variables intact; the callback supports both this server-side email flow and OAuth authorization codes.
+The supplied template displays Supabase's `{{ .Token }}` value as a six-digit code. The login page verifies that code on the device where sign-in was requested; the `/auth/callback` route remains in use for OAuth providers.
 
 Run `npm install`, then `npm run dev`. The storefront is at `/`; the multi-page administration area starts at `/admin`.
 
