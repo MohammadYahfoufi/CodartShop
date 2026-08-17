@@ -488,7 +488,7 @@ export function Storefront({
     <div className="site-shell">
       <header className="site-header">
         <Link href="/" className="brand header-brand" aria-label={`${settings.site_name} home`}>
-          <Image className="header-brand-logo" src="/logo small no bg.png" alt={settings.site_name} width={1024} height={1024} priority />
+          <Image className="header-brand-logo" src={settings.site_logo_url} alt={settings.site_name} width={512} height={512} priority />
         </Link>
         <nav className="main-nav" aria-label="Main navigation">
           <Link href="/#products">{settings.header_shop_label}</Link>

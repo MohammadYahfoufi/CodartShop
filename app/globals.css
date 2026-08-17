@@ -35,8 +35,8 @@ a { color: inherit; text-decoration: none; }
 .site-header { height: 82px; padding: 0 clamp(24px, 5vw, 80px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.14); position: absolute; z-index: 10; width: 100%; color: var(--white); }
 .brand { position: relative; width: 144px; height: 54px; display: block; overflow: hidden; }
 .brand-logo { position: absolute; width: 144px; height: 144px; max-width: none; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: contain; }
-.header-brand { width: 150px; height: 76px; }
-.header-brand-logo { position: absolute; width: 230px; height: 230px; max-width: none; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: contain; }
+.header-brand { width: 184px; height: 76px; }
+.header-brand-logo { position: absolute; width: 224px; height: 224px; max-width: none; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: contain; }
 .loading-brand { width: 132px; height: 46px; position: relative; display: block; overflow: hidden; }
 .loading-brand img { width: 140px; height: 140px; max-width: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: contain; }
 .main-nav { display: flex; gap: 34px; font-size: 13px; }
@@ -654,7 +654,7 @@ a { color: inherit; text-decoration: none; }
   .site-header { padding-left: 18px; padding-right: 18px; }
   .brand { width: 118px; }
   .brand-logo { width: 124px; height: 124px; }
-  .header-brand { width: 112px; height: 60px; }
+  .header-brand { width: 142px; height: 60px; }
   .header-brand-logo { width: 180px; height: 180px; }
   .favorite-trigger strong { display: none; }
   .product-card-body { padding: 22px; }
