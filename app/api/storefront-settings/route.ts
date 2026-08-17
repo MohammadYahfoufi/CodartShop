@@ -34,6 +34,12 @@ function validImage(value: FormDataEntryValue | null): value is File {
   return value instanceof File && value.size > 0;
 }
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
+  return "Unable to save storefront settings.";
+}
+
 export async function GET() {
   return Response.json(await getStorefrontSettings());
 }
@@ -72,6 +78,7 @@ export async function PUT(request: Request) {
     return Response.json(next);
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeStorefrontImage(imagePath)));
-    return Response.json({ error: error instanceof Error ? error.message : "Unable to save storefront settings." }, { status: 500 });
+    console.error("Storefront settings update failed:", error);
+    return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

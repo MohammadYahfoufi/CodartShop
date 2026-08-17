@@ -98,7 +98,7 @@ export async function saveStorefrontSettings(settings: StorefrontSettings) {
   const { error } = await getSupabaseAdmin().from("storefront_settings").upsert({ id: "main", settings, updated_at: new Date().toISOString() });
   if (error) {
     if (error.code === "42P01") throw new Error("Storefront settings table is missing. Run supabase/storefront-settings.sql once.");
-    throw error;
+    throw new Error(`Storefront settings could not be saved: ${error.message}`);
   }
   return settings;
 }

@@ -84,7 +84,10 @@ export function StorefrontSettingsEditor({ initialSettings }: { initialSettings:
       const form = new FormData(); form.set("settings", JSON.stringify(settings));
       if (logo) form.set("logo", logo); if (storyImage) form.set("story_image", storyImage);
       const response = await fetch("/api/storefront-settings", { method: "PUT", body: form });
-      const result = await response.json();
+      const responseText = await response.text();
+      let result: StorefrontSettings & { error?: string };
+      try { result = JSON.parse(responseText) as StorefrontSettings & { error?: string }; }
+      catch { throw new Error(responseText.trim() || `Storefront update failed with status ${response.status}.`); }
       if (!response.ok) throw new Error(result.error ?? "Unable to save storefront settings.");
       setSettings(result); setLogo(null); setStoryImage(null); setLogoPreview(result.site_logo_url); setStoryPreview(result.story_image_url);
       notify("Storefront changes published.", "success");
