@@ -14,6 +14,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SB_PUBLISHABLE_KEY
 SUPABASE_SECRET_KEY=YOUR_SB_SECRET_KEY
 ADMIN_EMAILS=owner@example.com
 NEXT_PUBLIC_WHATSAPP_NUMBER=9647501234567
+GEMINI_API_KEY=your_server_only_gemini_key
 ```
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted for projects that still use legacy anon keys. `SUPABASE_SERVICE_ROLE_KEY` is accepted for older server keys. Keep the secret/service-role key private and never prefix it with `NEXT_PUBLIC_`. Separate multiple admin emails with commas. The WhatsApp number must be in international format without `+`, spaces, or punctuation.
@@ -35,7 +36,15 @@ NEXT_PUBLIC_WHATSAPP_NUMBER=9647501234567
 
 Changing the HTML controls the design. A custom SMTP provider is required to replace Supabase's sender name and is also required for reliable production delivery to customers outside the Supabase project team.
 
-The supplied template displays Supabase's `{{ .Token }}` value as a six-digit code. The login page verifies that code on the device where sign-in was requested; the `/auth/callback` route remains in use for OAuth providers.
+The supplied template displays Supabase's `{{ .Token }}` value as a verification code. Supabase supports codes from 6 to 10 digits, and the login page accepts that configured length on the device where sign-in was requested; the `/auth/callback` route remains in use for OAuth providers.
+
+## Gemini voice assistant
+
+Add `GEMINI_API_KEY` to `.env.local` and to the Vercel Production and Preview environments. Keep it server-only and never prefix it with `NEXT_PUBLIC_`. Signed-in customers can open **Talk to AI** on the storefront; the server exchanges the permanent key for a short-lived, single-use Gemini Live token, while microphone audio streams directly between the browser and Gemini.
+
+Run `supabase/ai-voice-security.sql` in the Supabase SQL Editor before enabling voice chat. It creates an RLS-protected usage ledger and an atomic quota function. Defaults are 5-minute calls, 2 calls per user per hour, 3 per user per UTC day, 3 per network per hour, 6 per network per day, and 30 total calls per UTC day. Override them with the `AI_VOICE_*` server environment variables documented in `app/api/ai/live-token/route.ts`. Network addresses are stored only as keyed hashes; set a separate `AI_VOICE_RATE_LIMIT_SECRET` in production if desired.
+
+The live token is locked to a server-generated, read-only snapshot of up to 100 catalog products. Gemini receives product names, descriptions, categories, specifications, current prices, sale prices, and stock counts, but it receives no database credentials and has no order, account, or admin tools.
 
 Run `npm install`, then `npm run dev`. The storefront is at `/`; the multi-page administration area starts at `/admin`.
 

@@ -18,6 +18,7 @@ import { ProductVisual } from "@/components/product-visual";
 import { ProductGridSkeleton } from "@/components/skeletons";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { AuthButton } from "@/components/auth-button";
+import { VoiceAssistant } from "@/components/voice-assistant";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { deliveryAreas, getDeliveryArea, getPaymentMethod, paymentMethods } from "@/lib/checkout";
 import { realtimeTopics } from "@/lib/realtime-topics";
@@ -650,8 +651,10 @@ export function Storefront({
         {filter === "all" && <section className={`story-section ${settings.story_image_url ? "has-story-image" : ""}`} id="story">
           {settings.story_image_url && <Image className="story-background" src={settings.story_image_url} alt="" fill sizes="100vw" />}
           <div className="story-overlay" />
-          <p className="eyebrow">{settings.story_eyebrow}</p>
-          <h2>{settings.story_title}</h2>
+          <div className="story-heading">
+            <p className="eyebrow">{settings.story_eyebrow}</p>
+            <h2>{settings.story_title}</h2>
+          </div>
           <p>{settings.story_body}</p>
           <div className="story-line" />
         </section>}
@@ -682,6 +685,8 @@ export function Storefront({
           <span>{settings.footer_tagline}</span>
         </div>
       </footer>
+
+      <VoiceAssistant />
 
       {selectedProduct && <ProductDetailsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />}
 
