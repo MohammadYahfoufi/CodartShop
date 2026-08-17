@@ -51,7 +51,7 @@ export const defaultStorefrontSettings: StorefrontSettings = {
   whatsapp_number: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") ?? "",
   footer_copyright: "Codart. All rights reserved.",
   footer_tagline: "Technology, thoughtfully selected.",
-  seo_title: "Codart — Future-ready tech",
+  seo_title: "Codart - Future-ready tech",
   seo_description: "Curated technology for better work, play, and everything in between.",
 };
 

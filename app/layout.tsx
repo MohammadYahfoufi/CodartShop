@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getStorefrontSettings();
   return {
-    title: { default: settings.seo_title, template: `%s — ${settings.site_name}` },
+    title: { default: settings.seo_title.replace(/[—–]/g, "-"), template: `%s - ${settings.site_name}` },
     description: settings.seo_description,
   };
 }
