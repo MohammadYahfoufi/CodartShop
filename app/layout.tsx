@@ -11,11 +11,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: settings.seo_title, template: `%s — ${settings.site_name}` },
     description: settings.seo_description,
-    icons: {
-      icon: [{ url: "/logo small no bg.png?v=2", type: "image/png" }],
-      shortcut: "/logo small no bg.png?v=2",
-      apple: "/logo small no bg.png?v=2",
-    },
   };
 }
 
