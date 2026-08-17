@@ -10,6 +10,10 @@ function AccountIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>;
 }
 
+function MenuArrow() {
+  return <span className="profile-row-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg></span>;
+}
+
 export function AuthButton() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -93,11 +97,11 @@ export function AuthButton() {
           <div><strong>{profile.name}</strong><small>{profile.email}</small></div>
         </header>
         <nav aria-label="Account menu">
-          <Link href="/account"><span>My account</span><b aria-hidden="true">-&gt;</b></Link>
-          <Link href="/account#orders"><span>My orders</span><b aria-hidden="true">-&gt;</b></Link>
-          <Link href="/track-order"><span>Track an order</span><b aria-hidden="true">-&gt;</b></Link>
-          <Link href="/favorites"><span>Saved products</span><b aria-hidden="true">-&gt;</b></Link>
-          {profile.admin && <Link href="/admin"><span>Admin dashboard</span><b aria-hidden="true">-&gt;</b></Link>}
+          <Link href="/account"><span>My account</span><MenuArrow /></Link>
+          <Link href="/account#orders"><span>My orders</span><MenuArrow /></Link>
+          <Link href="/track-order"><span>Track an order</span><MenuArrow /></Link>
+          <Link href="/favorites"><span>Saved products</span><MenuArrow /></Link>
+          {profile.admin && <Link href="/admin"><span>Admin dashboard</span><MenuArrow /></Link>}
         </nav>
         <button type="button" onClick={signOut}>Sign out</button>
       </div>

@@ -683,10 +683,12 @@ a { color: inherit; text-decoration: none; }
 .profile-popover header small { color: #80869a; font-size: 9px; }
 .profile-popover-avatar { width: 39px; height: 39px; flex: 0 0 39px; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(145deg, #1682ee, #7135ed); color: white; font-size: 14px; font-weight: 800; }
 .profile-popover-avatar.has-photo { background-position: center; background-size: cover; }
-.profile-popover nav { padding: 7px 0; }
-.profile-popover nav a { min-height: 42px; padding: 0 11px; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; color: #30364f; font-size: 10px; font-weight: 750; transition: background .2s, color .2s; }
-.profile-popover nav a:hover { background: #f2f5ff; color: #315be5; }
-.profile-popover nav b { color: #9da4b7; font-size: 11px; }
+.profile-popover nav { padding: 8px 0; display: grid; gap: 2px; }
+.profile-popover nav a { min-height: 44px; padding: 0 8px 0 11px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; color: #30364f; font-size: 10px; font-weight: 750; transition: background .2s, color .2s, transform .2s; }
+.profile-popover nav a:hover { background: linear-gradient(100deg, #f2f5ff, #f8f6ff); color: #315be5; transform: translateX(2px); }
+.profile-row-arrow { width: 27px; height: 27px; flex: 0 0 27px; border: 1px solid #e3e7f2; border-radius: 50%; background: #f8f9fd; color: #78829f; display: grid; place-items: center; box-shadow: 0 4px 12px rgba(25,35,75,.04); transition: color .2s, border-color .2s, background .2s, transform .2s; }
+.profile-row-arrow svg { width: 12px; height: 12px; }
+.profile-popover nav a:hover .profile-row-arrow { border-color: #bac9fb; background: white; color: #315be5; transform: translateX(2px); }
 .profile-popover > button { width: 100%; min-height: 40px; border: 0; border-radius: 9px; cursor: pointer; background: #101735; color: white; font-size: 9px; font-weight: 800; }
 .profile-popover > button:hover { background: #1a2550; }
 
