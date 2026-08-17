@@ -198,7 +198,7 @@ export function VoiceAssistant() {
 
   return <div className={`voice-assistant ${open ? "is-open" : ""}`}>
     {open && <section className="voice-panel" role="dialog" aria-label="Codart AI voice assistant">
-      <div className="voice-panel-head"><div><span>CODART AI</span><h2>Voice concierge</h2></div><button type="button" onClick={() => { if (status === "live") void endCall(); setOpen(false); }} aria-label="Close voice assistant">×</button></div>
+      <div className="voice-panel-head"><div><span>CODART AI</span><h2>AI Shopping Assistant</h2></div><button type="button" onClick={() => { if (status === "live") void endCall(); setOpen(false); }} aria-label="Close voice assistant">×</button></div>
       <p className="voice-intro">Ask for help choosing products or navigating the store. Your microphone is used only while the call is active.</p>
       <div className={`voice-orb ${status === "live" ? "is-live" : ""}`}><VoiceIcon /></div>
       <p className="voice-status">{status === "connecting" ? "Connecting securely…" : status === "live" ? "Listening — speak naturally" : status === "error" ? "Call unavailable" : "Ready when you are"}</p>
