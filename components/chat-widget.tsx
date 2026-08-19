@@ -49,7 +49,7 @@ function InlineText({ content }: { content: string }) {
   return <>{parts.length > 0 ? parts : content}</>;
 }
 
-function MessageContent({ content }: { content: string }) {
+function MessageContent({ content, onProductOpen }: { content: string; onProductOpen: () => void }) {
   const productLink = /(?:\[([^\]]+)\]\s*\(\s*)?(\/products\/[a-zA-Z0-9_-]+)\s*\)?/gi;
 
   return (
@@ -84,6 +84,7 @@ function MessageContent({ content }: { content: string }) {
                   <Link
                     key={`${link.href}-${link.label}`}
                     href={link.href}
+                    onClick={onProductOpen}
                     className="group inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white! shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                   >
                     View {link.label}
@@ -244,7 +245,7 @@ export default function ChatWidget({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               <div className={`max-w-[82%] whitespace-pre-wrap px-3.5 py-2.5 text-[13px] leading-[1.6] shadow-sm ${message.role === 'user' ? 'rounded-[18px] rounded-br-md bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-200' : message.error ? 'rounded-[18px] rounded-bl-md border border-red-200 bg-red-50 text-red-700' : 'rounded-[18px] rounded-bl-md border border-slate-200/80 bg-white text-slate-700'}`}>
-                <MessageContent content={message.content} />
+                <MessageContent content={message.content} onProductOpen={onClose} />
               </div>
             </div>
           ))}

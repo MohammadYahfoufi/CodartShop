@@ -28,6 +28,27 @@ async function convertToWebP(file: File): Promise<File> {
   return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
 }
 
+async function removeImageBackground(file: File, onProgress: (message: string) => void): Promise<File> {
+  const { removeBackground } = await import("@imgly/background-removal");
+  const blob = await removeBackground(file, {
+    model: "isnet_fp16",
+    output: { format: "image/webp", quality: 0.9 },
+    progress: (key, current, total) => {
+      if (key.startsWith("fetch:") && total > 0) {
+        onProgress(`Downloading IMG.LY model… ${Math.min(100, Math.round((current / total) * 100))}%`);
+      } else if (key === "compute:inference") {
+        onProgress("IMG.LY is removing the background…");
+      } else if (key === "compute:mask") {
+        onProgress("Refining product edges…");
+      } else if (key === "compute:encode") {
+        onProgress("Finishing transparent image…");
+      }
+    },
+  });
+  const transparent = new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-no-bg.webp`, { type: "image/webp" });
+  return convertToWebP(transparent);
+}
+
 export function AdminDashboard({
   initialProducts,
   initialOrders,
@@ -58,6 +79,7 @@ export function AdminDashboard({
   const [previews, setPreviews] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
+  const [processingImages, setProcessingImages] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState("");
@@ -109,6 +131,7 @@ export function AdminDashboard({
   }
 
   async function processImages(selectedFiles: File[]) {
+    if (processingImages) return;
     const selected = selectedFiles.slice(0, 8);
     if (!selected.length) return;
     if (selected.some((file) => !file.type.startsWith("image/"))) {
@@ -116,15 +139,23 @@ export function AdminDashboard({
       return;
     }
 
-    setStatus("Optimizing image…");
+    setProcessingImages(true);
+    setStatus("Preparing IMG.LY background removal…");
     try {
-      const converted = await Promise.all(selected.map(convertToWebP));
+      const converted: File[] = [];
+      for (const [index, file] of selected.entries()) {
+        const position = selected.length > 1 ? ` (${index + 1}/${selected.length})` : "";
+        converted.push(await removeImageBackground(file, (message) => setStatus(`${message}${position}`)));
+      }
       previews.forEach((preview) => URL.revokeObjectURL(preview));
       setImages(converted);
       setPreviews(converted.map((file) => URL.createObjectURL(file)));
-      setStatus(`${converted.length} ${converted.length === 1 ? "image" : "images"} optimized and ready.`);
+      setStatus(`${converted.length} ${converted.length === 1 ? "background removed" : "backgrounds removed"} and ready.`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to process image.");
+      console.error("IMG.LY background removal failed:", error);
+      setStatus("IMG.LY could not remove the background. Check your connection and try again.");
+    } finally {
+      setProcessingImages(false);
     }
   }
 
@@ -266,11 +297,11 @@ export function AdminDashboard({
               }}
               onDrop={dropImage}
             >
-              <input type="file" accept="image/*" multiple onChange={pickImage} />
-              {previews.length || editing?.image_url ? <div className="upload-preview-grid">{(previews.length ? previews : (editing?.images?.map((item) => item.url) ?? [editing?.image_url ?? ""])).map((src) => <span className="upload-preview" key={src}><ProductVisual src={src} alt="Product preview" /></span>)}</div> : <><ImageIcon /><strong>Drop or choose up to 8 images</strong><small>Converted to WebP automatically · max 1600px</small></>}
+              <input type="file" accept="image/*" multiple onChange={pickImage} disabled={processingImages} />
+              {previews.length || editing?.image_url ? <div className="upload-preview-grid">{(previews.length ? previews : (editing?.images?.map((item) => item.url) ?? [editing?.image_url ?? ""])).map((src) => <span className="upload-preview" key={src}><ProductVisual src={src} alt="Product preview" /></span>)}</div> : <><ImageIcon /><strong>{processingImages ? "Removing backgrounds…" : "Drop or choose up to 8 images"}</strong><small>IMG.LY background removal · transparent WebP · max 1600px</small></>}
             </label></div>
             {status && <p className="form-status" role="status">{status}</p>}
-            <button className="admin-submit" type="submit" disabled={saving}>{saving ? <span className="spinner" /> : editing ? <EditIcon /> : <PlusIcon />}{saving ? "Saving…" : editing ? "Update product" : "Publish product"}</button>
+            <button className="admin-submit" type="submit" disabled={saving || processingImages}>{saving || processingImages ? <span className="spinner" /> : editing ? <EditIcon /> : <PlusIcon />}{processingImages ? "Removing background…" : saving ? "Saving…" : editing ? "Update product" : "Publish product"}</button>
           </form>
         </section>
 
