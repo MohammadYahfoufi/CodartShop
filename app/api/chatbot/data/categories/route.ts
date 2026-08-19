@@ -1,9 +1,11 @@
-import { loadCatalogForEndpoint } from '@/lib/chatbot/data-tool';
+import { getSupabaseAdmin } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+
+const supabase = getSupabaseAdmin();
 
 export async function GET() {
   try {
-    const categories = await loadCatalogForEndpoint('categories');
+    const categories = await supabase.from('categories').select('*');
     return NextResponse.json({ categories });
   } catch (error) {
     console.error('Error fetching categories:', error);

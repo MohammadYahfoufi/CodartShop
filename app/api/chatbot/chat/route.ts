@@ -4,9 +4,23 @@ import { getToolContext } from '@/lib/chatbot/data-tool';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
+function shouldUseKnowledgeLookup(message: string) {
+  const text = message.toLowerCase();
+  const productOnlySignals =
+    /\b(products?|product|items?|catalog|catalogue|categories?|category|recommend|recommendation|suggest|price|prices|pricing|available|availability)\b/i.test(
+      text,
+    );
+  const knowledgeSignals =
+    /\b(policy|return|refund|shipping|delivery|warranty|support|faq|help|hours|contact|location|track|order|orders|payment|checkout|account)\b/i.test(
+      text,
+    );
+
+  return knowledgeSignals || !productOnlySignals;
+}
+
 export async function POST(req: Request) {
   try {
-    const { message, conversationId } = await req.json();
+    const { message } = await req.json();
 
     if (typeof message !== 'string' || !message.trim()) {
       return NextResponse.json(
@@ -15,9 +29,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const relevantChunks = await retrieveRelevantContext(message);
-    const contextBlock = formatContext(relevantChunks);
-    const toolResults = await getToolContext(message);
+    const useKnowledgeLookup = shouldUseKnowledgeLookup(message);
+    const [relevantChunks, toolResults] = await Promise.all([
+      useKnowledgeLookup ? retrieveRelevantContext(message) : Promise.resolve([]),
+      getToolContext(message),
+    ]);
+    const contextBlock = useKnowledgeLookup
+      ? formatContext(relevantChunks)
+      : 'Knowledge lookup skipped for this product-focused request.';
     const toolBlock =
       toolResults.length > 0
         ? JSON.stringify(toolResults, null, 2)
@@ -47,13 +66,14 @@ export async function POST(req: Request) {
     const ai = new GoogleGenAI({ apiKey });
     const systemInstruction = buildSystemPrompt('default', [
       'Use the following retrieved context when it helps answer the user:',
-      contextBlock,
+      contextBlock.slice(0, 1200),
       'Use the following tool output when the user asks about products or categories:',
       toolBlock,
-      'If the retrieved context does not help, answer from general knowledge and say so when needed.',
+      'For store-specific product, pricing, availability, policy, and FAQ questions, rely on the provided context and tool output only.',
+      'If the needed information is missing or incomplete, say that clearly and do not guess.',
     ]);
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents,
       config: {
         systemInstruction,
@@ -65,7 +85,6 @@ export async function POST(req: Request) {
     console.log('Gemini response received, length:', reply.length);
 
     return NextResponse.json({
-      conversationId,
       reply,
     });
   } catch (error) {

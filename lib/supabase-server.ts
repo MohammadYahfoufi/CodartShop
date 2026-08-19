@@ -1,9 +1,9 @@
-import "server-only";
+import 'server-only';
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js';
 
-export const PRODUCT_IMAGES_BUCKET = "CodartlbShop";
-export const isLocalPersistenceEnabled = process.env.NODE_ENV !== "production";
+export const PRODUCT_IMAGES_BUCKET = 'CodartlbShop';
+export const isLocalPersistenceEnabled = process.env.NODE_ENV !== 'production';
 // Avoid making every storefront interaction wait on an offline project.
 // Updating environment variables requires a server restart, which clears this state.
 const SUPABASE_RETRY_DELAY_MS = 30 * 60_000;
@@ -16,7 +16,10 @@ export function isSupabaseTemporarilyUnavailable() {
   // Hosted instances must retry Supabase instead of falling back to the
   // deployment bundle, whose filesystem is read-only.
   if (!isLocalPersistenceEnabled) return false;
-  return ((globalThis as SupabaseRuntime).__codartSupabaseUnavailableUntil ?? 0) > Date.now();
+  return (
+    ((globalThis as SupabaseRuntime).__codartSupabaseUnavailableUntil ?? 0) >
+    Date.now()
+  );
 }
 
 export function markSupabaseUnavailable() {
@@ -44,27 +47,21 @@ function getSupabaseUrl() {
 
 export const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    (process.env.SUPABASE_SECRET_KEY ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY),
+  (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
 );
 
 export function getSupabaseAdmin() {
   const url = getSupabaseUrl();
   const serverKey =
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serverKey) {
     throw new Error(
-      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY to .env.local.",
+      'Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY to .env.local.',
     );
   }
 
   return createClient(url, serverKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-}
-
-export function createClient() {
-  return getSupabaseAdmin();
 }

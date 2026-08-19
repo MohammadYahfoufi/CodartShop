@@ -18,8 +18,7 @@ const starterMessages: Message[] = [
   {
     id: 1,
     role: 'assistant',
-    content:
-      'Hello! I can answer questions about the store, catalog, or project knowledge.',
+    content: 'Hi. I can help with product recommendations and support.',
   },
 ];
 
@@ -55,9 +54,9 @@ export default function ChatWidget() {
 
   const quickPrompts = useMemo(
     () => [
-      'Tell me about the latest products',
-      'What categories are available?',
-      'Help me choose a product',
+      'Recommend a product',
+      'What categories do you have?',
+      'I need help with an order',
     ],
     [],
   );
@@ -118,7 +117,7 @@ export default function ChatWidget() {
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="fixed bottom-6 right-6 z-70 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-indigo-600 to-violet-600 text-white shadow-[0_16px_40px_rgba(99,54,241,0.35)] transition hover:scale-105"
+        className="fixed bottom-16 left-6 z-70 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-br from-indigo-600 to-violet-600 text-white shadow-[0_16px_40px_rgba(99,54,241,0.35)] transition hover:scale-105"
         aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
       >
         {isOpen ? (
@@ -158,7 +157,7 @@ export default function ChatWidget() {
             <div>
               <p className="text-sm font-semibold">AI Assistant</p>
               <p className="text-xs text-slate-300">
-                Chatbot connected to the new API
+                Product recommendations and support
               </p>
             </div>
             <button
@@ -251,7 +250,7 @@ export default function ChatWidget() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white! transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? 'Sending...' : 'Send'}
                 </button>
