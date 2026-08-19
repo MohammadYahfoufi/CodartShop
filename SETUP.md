@@ -67,7 +67,7 @@ The storefront batches page views and important clicks before sending them to `/
 
 Admin uploads are resized in the browser to a maximum dimension of 1600 pixels and converted to WebP at 82% quality. The server stores images in the public `CodartlbShop` bucket and all product metadata in the Supabase `products` table.
 
-Product-image uploads first use `@imgly/background-removal` in the admin's browser to create a transparent foreground, then resize and encode the result as WebP. The first use downloads IMG.LY's medium model (about 80 MB) from IMG.LY's CDN; browsers cache it for later uploads. IMG.LY publishes this standalone package under the AGPL license, so confirm that its license terms fit the deployment or obtain another license from IMG.LY.
+Product-image uploads offer **Keep background** and **Remove background** choices. When removal is selected, `@imgly/background-removal` runs in the admin's browser to create a transparent foreground before resizing and WebP encoding. The first use downloads IMG.LY's medium model (about 80 MB) from IMG.LY's CDN; browsers cache it for later uploads. IMG.LY publishes this standalone package under the AGPL license, so confirm that its license terms fit the deployment or obtain another license from IMG.LY.
 
 ## Security
 

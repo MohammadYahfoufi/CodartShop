@@ -80,6 +80,7 @@ export function AdminDashboard({
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const [processingImages, setProcessingImages] = useState(false);
+  const [removeBackgroundEnabled, setRemoveBackgroundEnabled] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState("");
@@ -140,20 +141,29 @@ export function AdminDashboard({
     }
 
     setProcessingImages(true);
-    setStatus("Preparing IMG.LY background removal…");
+    setStatus(removeBackgroundEnabled ? "Preparing IMG.LY background removal…" : "Optimizing image…");
     try {
-      const converted: File[] = [];
-      for (const [index, file] of selected.entries()) {
-        const position = selected.length > 1 ? ` (${index + 1}/${selected.length})` : "";
-        converted.push(await removeImageBackground(file, (message) => setStatus(`${message}${position}`)));
+      let converted: File[];
+      if (removeBackgroundEnabled) {
+        converted = [];
+        for (const [index, file] of selected.entries()) {
+          const position = selected.length > 1 ? ` (${index + 1}/${selected.length})` : "";
+          converted.push(await removeImageBackground(file, (message) => setStatus(`${message}${position}`)));
+        }
+      } else {
+        converted = await Promise.all(selected.map(convertToWebP));
       }
       previews.forEach((preview) => URL.revokeObjectURL(preview));
       setImages(converted);
       setPreviews(converted.map((file) => URL.createObjectURL(file)));
-      setStatus(`${converted.length} ${converted.length === 1 ? "background removed" : "backgrounds removed"} and ready.`);
+      setStatus(removeBackgroundEnabled
+        ? `${converted.length} ${converted.length === 1 ? "background removed" : "backgrounds removed"} and ready.`
+        : `${converted.length} ${converted.length === 1 ? "image" : "images"} optimized with the original background.`);
     } catch (error) {
-      console.error("IMG.LY background removal failed:", error);
-      setStatus("IMG.LY could not remove the background. Check your connection and try again.");
+      console.error(removeBackgroundEnabled ? "IMG.LY background removal failed:" : "Image optimization failed:", error);
+      setStatus(removeBackgroundEnabled
+        ? "IMG.LY could not remove the background. Check your connection and try again."
+        : "The browser could not optimize this image. Try another file.");
     } finally {
       setProcessingImages(false);
     }
@@ -279,7 +289,12 @@ export function AdminDashboard({
             <div className="admin-field-grid"><label className="field"><span>Regular price (USD)</span><div className="price-input"><b>$</b><input required min="0" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0.00" /></div></label><label className="field"><span>Sale price <small>optional</small></span><div className="price-input"><b>$</b><input min="0" step="0.01" inputMode="decimal" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="0.00" /></div></label></div>
             <label className="admin-check-field"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} /><span>Feature this product on the storefront</span></label>
             <label className="field"><span>Specifications <small>one “Name: Value” per line</small></span><textarea rows={5} value={specifications} onChange={(event) => setSpecifications(event.target.value)} placeholder={"Power: 65W\nWarranty: 1 year\nColor: Black"} /></label>
-            <div className="field"><span>Product images {editing && <small>· leave empty to keep gallery</small>}</span><label
+            <div className="field"><span>Product images {editing && <small>· leave empty to keep gallery</small>}</span>
+              <div className="image-processing-choice" aria-label="Choose image background processing">
+                <button type="button" className={!removeBackgroundEnabled ? "is-active" : ""} aria-pressed={!removeBackgroundEnabled} disabled={processingImages} onClick={() => setRemoveBackgroundEnabled(false)}><strong>Keep background</strong><small>Optimize the original image</small></button>
+                <button type="button" className={removeBackgroundEnabled ? "is-active" : ""} aria-pressed={removeBackgroundEnabled} disabled={processingImages} onClick={() => setRemoveBackgroundEnabled(true)}><strong>Remove background</strong><small>Use IMG.LY AI</small></button>
+              </div>
+              <label
               className={`upload-zone ${isDragging ? "is-dragging" : ""}`}
               onDragEnter={(event) => {
                 event.preventDefault();
@@ -298,10 +313,10 @@ export function AdminDashboard({
               onDrop={dropImage}
             >
               <input type="file" accept="image/*" multiple onChange={pickImage} disabled={processingImages} />
-              {previews.length || editing?.image_url ? <div className="upload-preview-grid">{(previews.length ? previews : (editing?.images?.map((item) => item.url) ?? [editing?.image_url ?? ""])).map((src) => <span className="upload-preview" key={src}><ProductVisual src={src} alt="Product preview" /></span>)}</div> : <><ImageIcon /><strong>{processingImages ? "Removing backgrounds…" : "Drop or choose up to 8 images"}</strong><small>IMG.LY background removal · transparent WebP · max 1600px</small></>}
+              {previews.length || editing?.image_url ? <div className="upload-preview-grid">{(previews.length ? previews : (editing?.images?.map((item) => item.url) ?? [editing?.image_url ?? ""])).map((src) => <span className="upload-preview" key={src}><ProductVisual src={src} alt="Product preview" /></span>)}</div> : <><ImageIcon /><strong>{processingImages ? removeBackgroundEnabled ? "Removing backgrounds…" : "Optimizing images…" : "Drop or choose up to 8 images"}</strong><small>{removeBackgroundEnabled ? "IMG.LY AI · transparent WebP" : "Original background · optimized WebP"} · max 1600px</small></>}
             </label></div>
             {status && <p className="form-status" role="status">{status}</p>}
-            <button className="admin-submit" type="submit" disabled={saving || processingImages}>{saving || processingImages ? <span className="spinner" /> : editing ? <EditIcon /> : <PlusIcon />}{processingImages ? "Removing background…" : saving ? "Saving…" : editing ? "Update product" : "Publish product"}</button>
+            <button className="admin-submit" type="submit" disabled={saving || processingImages}>{saving || processingImages ? <span className="spinner" /> : editing ? <EditIcon /> : <PlusIcon />}{processingImages ? removeBackgroundEnabled ? "Removing background…" : "Optimizing image…" : saving ? "Saving…" : editing ? "Update product" : "Publish product"}</button>
           </form>
         </section>
 

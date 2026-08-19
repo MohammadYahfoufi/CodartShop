@@ -113,6 +113,7 @@ export function Storefront({
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [highlightedProductId, setHighlightedProductId] = useState(focusProductId ?? "");
   const [searchFocused, setSearchFocused] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -240,13 +241,19 @@ export function Storefront({
 
   useEffect(() => {
     if (!focusProductId) return;
-    requestAnimationFrame(() => {
-      document.getElementById(`product-${focusProductId}`)?.scrollIntoView({
+    const frame = requestAnimationFrame(() => {
+      setHighlightedProductId(focusProductId);
+      const productCard = document.getElementById(`product-${focusProductId}`);
+      productCard?.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
-      setSelectedProduct(productPage.products.find((product) => product.id === focusProductId) ?? null);
     });
+    const timer = window.setTimeout(() => setHighlightedProductId(""), 4500);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [focusProductId, productPage.products]);
 
   useEffect(() => {
@@ -601,7 +608,7 @@ export function Storefront({
                 const quantityInCart =
                   cart.find((item) => item.id === product.id)?.quantity ?? 0;
                 return (
-                  <article className="product-card" id={`product-${product.id}`} key={product.id}>
+                  <article className={`product-card ${highlightedProductId === product.id ? "is-ai-highlighted" : ""}`} id={`product-${product.id}`} key={product.id}>
                     <div className="product-media">
                       <ProductVisual src={product.image_url} alt={product.title} priority={index < 2} />
                       <span className="product-index">{String(index + 1).padStart(2, "0")}</span>
