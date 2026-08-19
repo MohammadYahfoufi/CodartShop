@@ -20,7 +20,7 @@ const starterMessages: Message[] = [
   {
     id: 1,
     role: 'assistant',
-    content: 'Hi. I can help with product recommendations and support.',
+    content: "Hi, I'm Codart AI. What can I help you find today?",
   },
 ];
 
@@ -63,6 +63,8 @@ function MessageContent({ content }: { content: string }) {
           });
           return '';
         }).trim();
+        const isBullet = /^[-*]\s+/.test(text);
+        const cleanText = text.replace(/^[-*]\s+/, '');
 
         if (!text && links.length === 0) {
           return <div key={`space-${lineIndex}`} className="h-1" aria-hidden="true" />;
@@ -70,17 +72,24 @@ function MessageContent({ content }: { content: string }) {
 
         return (
           <div key={`line-${lineIndex}`} className="space-y-2">
-            {text && <p><InlineText content={text} /></p>}
+            {cleanText && (
+              <p className={isBullet ? 'flex gap-2' : undefined}>
+                {isBullet && <span className="mt-[0.65em] h-1 w-1 shrink-0 rounded-full bg-indigo-400" aria-hidden="true" />}
+                <span><InlineText content={cleanText} /></span>
+              </p>
+            )}
             {links.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {links.map((link) => (
                   <Link
                     key={`${link.href}-${link.label}`}
                     href={link.href}
-                    className="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white! shadow-sm transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    className="group inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white! shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                   >
                     View {link.label}
-                    <span aria-hidden="true" className="ml-1">→</span>
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </Link>
                 ))}
               </div>
@@ -157,9 +166,8 @@ export default function ChatWidget({ onClose }: { onClose: () => void }) {
   );
   const hasSentFirstQuestion = messages.some((message) => message.role === 'user');
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = input.trim();
+  async function sendMessage(message: string) {
+    const trimmed = message.trim();
     if (!trimmed || loading) return;
 
     setMessages((current) => [
@@ -197,34 +205,59 @@ export default function ChatWidget({ onClose }: { onClose: () => void }) {
     }
   }
 
+  function handleSend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void sendMessage(input);
+  }
+
   return (
-    <div className="fixed bottom-6 right-6 z-80 flex w-[min(92vw,380px)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(10,16,42,0.2)]">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-950 px-4 py-3 text-white">
-        <div>
-          <p className="text-sm font-semibold">Chat with AI</p>
-          <p className="text-xs text-slate-300">Product recommendations and support</p>
+    <section className="codart-chat-panel fixed bottom-4 right-4 z-80 flex h-[min(620px,calc(100dvh-32px))] w-[min(calc(100vw-32px),400px)] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.22)] sm:bottom-6 sm:right-6" role="dialog" aria-label="Chat with Codart AI">
+      <header className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-4">
+        <div className="flex items-center gap-3">
+          <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-slate-900 text-white shadow-[0_8px_20px_rgba(79,70,229,0.25)]">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" strokeLinejoin="round" />
+              <path d="m18.5 15 .7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" strokeLinejoin="round" />
+            </svg>
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" aria-label="Online" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[15px] font-bold tracking-tight text-slate-950">Codart AI</h2>
+              <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-600">Beta</span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-slate-500">Shopping help, usually in seconds</p>
+          </div>
         </div>
-        <button type="button" onClick={onClose} className="rounded-full p-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white" aria-label="Close chat">
+        <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" aria-label="Close chat">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
-      </div>
+      </header>
 
-      <div className="flex h-105 flex-col bg-slate-50 p-3">
-        <div className="mb-3 flex-1 space-y-2 overflow-y-auto rounded-2xl bg-white p-3 shadow-inner">
+      <div className="flex min-h-0 flex-1 flex-col bg-[#f7f8fc]">
+        <div className="codart-chat-scroll flex-1 space-y-4 overflow-y-auto px-3 py-5 sm:px-4" role="log" aria-live="polite">
           {messages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-6 ${message.role === 'user' ? 'bg-indigo-600 text-white' : message.error ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-slate-200 bg-slate-50 text-slate-700'}`}>
+            <div key={message.id} className={`codart-chat-message flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {message.role === 'assistant' && (
+                <div className={`mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl ${message.error ? 'bg-red-100 text-red-600' : 'bg-slate-900 text-white'}`} aria-hidden="true">
+                  <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m10 2.5 1.2 3.7L15 7.5l-3.8 1.3L10 12.5 8.8 8.8 5 7.5l3.8-1.3L10 2.5Z" strokeLinejoin="round" /></svg>
+                </div>
+              )}
+              <div className={`max-w-[82%] whitespace-pre-wrap px-3.5 py-2.5 text-[13px] leading-[1.6] shadow-sm ${message.role === 'user' ? 'rounded-[18px] rounded-br-md bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-200' : message.error ? 'rounded-[18px] rounded-bl-md border border-red-200 bg-red-50 text-red-700' : 'rounded-[18px] rounded-bl-md border border-slate-200/80 bg-white text-slate-700'}`}>
                 <MessageContent content={message.content} />
               </div>
             </div>
           ))}
           {loading && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-                <div className="flex items-center gap-1" aria-label="Typing">
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+            <div className="flex items-end gap-2 justify-start">
+              <div className="mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-slate-900 text-white" aria-hidden="true">
+                <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m10 2.5 1.2 3.7L15 7.5l-3.8 1.3L10 12.5 8.8 8.8 5 7.5l3.8-1.3L10 2.5Z" strokeLinejoin="round" /></svg>
+              </div>
+              <div className="rounded-[18px] rounded-bl-md border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
+                <div className="flex items-center gap-1.5" aria-label="Codart AI is typing">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400" />
                 </div>
               </div>
             </div>
@@ -233,27 +266,33 @@ export default function ChatWidget({ onClose }: { onClose: () => void }) {
         </div>
 
         {!hasSentFirstQuestion && (
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto border-t border-slate-100 bg-white px-3 py-3 sm:px-4">
             {quickPrompts.map((prompt) => (
-              <button key={prompt} type="button" onClick={() => setInput(prompt)} className="rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600">
+              <button key={prompt} type="button" onClick={() => void sendMessage(prompt)} disabled={loading} className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-50">
                 {prompt}
               </button>
             ))}
           </div>
         )}
 
-        {signInRequired && <Link href="/login?next=/" className="mb-3 rounded-xl bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white">Sign in to continue</Link>}
-        {remaining !== null && <p className="mb-2 text-center text-[11px] text-slate-500">{remaining} AI messages remaining today</p>}
-
-        <form onSubmit={handleSend} className="rounded-2xl border border-slate-200 bg-white p-2">
-          <input value={input} onChange={(event) => setInput(event.target.value)} placeholder={loading ? 'Thinking...' : 'Ask about products or the site...'} disabled={loading} maxLength={2000} className="w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-indigo-300 focus:bg-white" />
-          <div className="mt-2 flex justify-end">
-            <button type="submit" disabled={loading} className="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white! transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60">
-              {loading ? 'Sending...' : 'Send'}
+        <footer className="border-t border-slate-100 bg-white px-3 pb-3 pt-2.5 sm:px-4">
+          {signInRequired && <Link href="/login?next=/" className="mb-2.5 flex items-center justify-center rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white! transition hover:bg-indigo-500">Sign in to continue</Link>}
+          <form onSubmit={handleSend} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 pl-3 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-50">
+            <label htmlFor="codart-chat-input" className="sr-only">Message Codart AI</label>
+            <input id="codart-chat-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder={loading ? 'Codart AI is thinking...' : 'Message Codart AI...'} disabled={loading} maxLength={2000} autoComplete="off" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+            <button type="submit" disabled={loading || !input.trim()} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-900 text-white! shadow-sm transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400!" aria-label="Send message">
+              {loading ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              ) : (
+                <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m4 4 12 6-12 6 2-6-2-6Z" strokeLinecap="round" strokeLinejoin="round" /><path d="M6 10h10" strokeLinecap="round" /></svg>
+              )}
             </button>
-          </div>
-        </form>
+          </form>
+          <p className="mt-2 text-center text-[10px] text-slate-400">
+            {remaining !== null ? `${remaining} messages left today` : 'AI can make mistakes. Check important details.'}
+          </p>
+        </footer>
       </div>
-    </div>
+    </section>
   );
 }

@@ -5550,3 +5550,61 @@ a {
     font-size: 47px;
   }
 }
+
+.codart-chat-panel {
+  transform-origin: bottom right;
+  animation: codart-chat-open 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.codart-chat-message {
+  animation: codart-chat-message-in 180ms ease-out both;
+}
+
+.codart-chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.codart-chat-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.codart-chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.codart-chat-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+@keyframes codart-chat-open {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes codart-chat-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .codart-chat-panel,
+  .codart-chat-message {
+    animation: none;
+  }
+}
