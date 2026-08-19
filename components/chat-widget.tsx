@@ -30,23 +30,66 @@ class ChatRequestError extends Error {
   }
 }
 
-function MessageContent({ content }: { content: string }) {
-  const productLink = /\[([^\]]+)\]\((\/products\/[a-zA-Z0-9_-]+)\)/g;
+function InlineText({ content }: { content: string }) {
+  const boldText = /\*\*([^*]+)\*\*/g;
   const parts: ReactNode[] = [];
   let start = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = productLink.exec(content)) !== null) {
+  while ((match = boldText.exec(content)) !== null) {
     if (match.index > start) parts.push(content.slice(start, match.index));
     parts.push(
-      <Link key={`${match[2]}-${match.index}`} href={match[2]} className="font-semibold underline underline-offset-2">
+      <strong key={`${match[1]}-${match.index}`} className="font-semibold text-slate-900">
         {match[1]}
-      </Link>,
+      </strong>,
     );
     start = match.index + match[0].length;
   }
   if (start < content.length) parts.push(content.slice(start));
   return <>{parts.length > 0 ? parts : content}</>;
+}
+
+function MessageContent({ content }: { content: string }) {
+  const productLink = /(?:\[([^\]]+)\]\s*\(\s*)?(\/products\/[a-zA-Z0-9_-]+)\s*\)?/gi;
+
+  return (
+    <div className="space-y-2">
+      {content.split('\n').map((line, lineIndex) => {
+        const links: Array<{ href: string; label: string }> = [];
+        const text = line.replace(productLink, (_match, label: string | undefined, href: string) => {
+          links.push({
+            href,
+            label: label?.replace(/^view\s+/i, '').trim() || 'product',
+          });
+          return '';
+        }).trim();
+
+        if (!text && links.length === 0) {
+          return <div key={`space-${lineIndex}`} className="h-1" aria-hidden="true" />;
+        }
+
+        return (
+          <div key={`line-${lineIndex}`} className="space-y-2">
+            {text && <p><InlineText content={text} /></p>}
+            {links.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {links.map((link) => (
+                  <Link
+                    key={`${link.href}-${link.label}`}
+                    href={link.href}
+                    className="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white! shadow-sm transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                  >
+                    View {link.label}
+                    <span aria-hidden="true" className="ml-1">→</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 async function getReply(message: string, history: Message[]) {
