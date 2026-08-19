@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowIcon,
   BagIcon,
@@ -492,7 +492,7 @@ export function Storefront({
   }
 
   return (
-    <div className="site-shell">
+    <div className="site-shell" style={{ "--product-image-background": settings.product_background_color } as CSSProperties}>
       <header className="site-header">
         <Link href="/" className="brand header-brand" aria-label={`${settings.site_name} home`}>
           <Image className="header-brand-logo" src={settings.site_logo_url} alt={settings.site_name} width={512} height={512} priority />

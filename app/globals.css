@@ -860,7 +860,7 @@ a {
   height: 52px;
   position: relative;
   overflow: hidden;
-  background: #e9ecf7;
+  background: var(--product-image-background, #e9ecf7);
 }
 
 .search-result-copy {
@@ -973,7 +973,7 @@ a {
   aspect-ratio: 1.42;
   position: relative;
   overflow: hidden;
-  background: #e9ecf7;
+  background: var(--product-image-background, #e9ecf7);
 }
 
 .product-image {
@@ -1818,7 +1818,7 @@ a {
 .cart-thumb {
   position: relative;
   aspect-ratio: 1;
-  background: #e7eaf5;
+  background: var(--product-image-background, #e9ecf7);
 }
 
 .cart-item-info {
@@ -2164,14 +2164,14 @@ a {
 .product-gallery {
   min-width: 0;
   padding: 24px;
-  background: #e9ecf7;
+  background: var(--product-image-background, #e9ecf7);
 }
 
 .product-gallery-main {
   position: relative;
   min-height: 480px;
   overflow: hidden;
-  background: white;
+  background: var(--product-image-background, #e9ecf7);
 }
 
 .product-gallery-main>* {
@@ -2191,7 +2191,7 @@ a {
   aspect-ratio: 1;
   overflow: hidden;
   border: 2px solid transparent;
-  background: white;
+  background: var(--product-image-background, #e9ecf7);
   cursor: pointer;
 }
 

@@ -20,33 +20,49 @@ function SparkIcon() {
 
 export function AssistantHub() {
   const [mode, setMode] = useState<AssistantMode>('closed');
-
-  if (mode === 'chat') return <ChatWidget onClose={() => setMode('closed')} />;
-  if (mode === 'voice') return <VoiceAssistant onClose={() => setMode('closed')} />;
+  const [chatStarted, setChatStarted] = useState(false);
 
   const menuOpen = mode === 'menu';
+  const chatOpen = mode === 'chat';
+  const voiceOpen = mode === 'voice';
+
+  function openChat() {
+    setChatStarted(true);
+    setMode('chat');
+  }
+
   return (
-    <div className="ai-hub">
-      {menuOpen && (
-        <section className="ai-hub-menu" role="dialog" aria-label="Choose AI assistant mode">
-          <div className="ai-hub-menu-head">
-            <div><span>CODART AI</span><h2>How can I help?</h2></div>
-            <button type="button" onClick={() => setMode('closed')} aria-label="Close AI menu">×</button>
-          </div>
-          <p>Choose how you would like to speak with the shopping assistant.</p>
-          <button type="button" className="ai-mode-card" onClick={() => setMode('chat')}>
-            <i><ChatIcon /></i><span><strong>Chat with AI</strong><small>Type questions and get product help</small></span><b>→</b>
-          </button>
-          <button type="button" className="ai-mode-card" onClick={() => setMode('voice')}>
-            <i><VoiceIcon /></i><span><strong>Talk to AI</strong><small>Have a live voice conversation</small></span><b>→</b>
-          </button>
-          <small className="ai-hub-note">Sign-in and daily usage limits protect availability for everyone.</small>
-        </section>
+    <>
+      {chatStarted && (
+        <div hidden={!chatOpen} aria-hidden={!chatOpen}>
+          <ChatWidget onClose={() => setMode('closed')} />
+        </div>
       )}
-      <button type="button" className="voice-launcher ai-hub-launcher" onClick={() => setMode(menuOpen ? 'closed' : 'menu')} aria-label={menuOpen ? 'Close AI options' : 'Open AI assistant'} aria-expanded={menuOpen}>
-        {menuOpen ? <span className="ai-hub-close">×</span> : <SparkIcon />}
-        <span>{menuOpen ? 'Close' : 'Ask AI'}</span>
-      </button>
-    </div>
+      {voiceOpen && <VoiceAssistant onClose={() => setMode('closed')} />}
+      {!chatOpen && !voiceOpen && (
+        <div className="ai-hub">
+          {menuOpen && (
+            <section className="ai-hub-menu" role="dialog" aria-label="Choose AI assistant mode">
+              <div className="ai-hub-menu-head">
+                <div><span>CODART AI</span><h2>How can I help?</h2></div>
+                <button type="button" onClick={() => setMode('closed')} aria-label="Close AI menu">×</button>
+              </div>
+              <p>Choose how you would like to speak with the shopping assistant.</p>
+              <button type="button" className="ai-mode-card" onClick={openChat}>
+                <i><ChatIcon /></i><span><strong>Chat with AI</strong><small>Type questions and get product help</small></span><b>→</b>
+              </button>
+              <button type="button" className="ai-mode-card" onClick={() => setMode('voice')}>
+                <i><VoiceIcon /></i><span><strong>Talk to AI</strong><small>Have a live voice conversation</small></span><b>→</b>
+              </button>
+              <small className="ai-hub-note">Sign-in and daily usage limits protect availability for everyone.</small>
+            </section>
+          )}
+          <button type="button" className="voice-launcher ai-hub-launcher" onClick={() => setMode(menuOpen ? 'closed' : 'menu')} aria-label={menuOpen ? 'Close AI options' : 'Open AI assistant'} aria-expanded={menuOpen}>
+            {menuOpen ? <span className="ai-hub-close">×</span> : <SparkIcon />}
+            <span>{menuOpen ? 'Close' : 'Ask AI'}</span>
+          </button>
+        </div>
+      )}
+    </>
   );
 }

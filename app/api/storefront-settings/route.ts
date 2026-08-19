@@ -24,6 +24,9 @@ function validateSettings(value: unknown) {
     if (settings[key as keyof typeof settings].length > max) throw new Error(`${key.replaceAll("_", " ")} must be ${max} characters or fewer.`);
   }
   if (!settings.site_name.trim() || !settings.seo_title.trim()) throw new Error("Store name and SEO title are required.");
+  if (!/^#[0-9a-f]{6}$/i.test(settings.product_background_color)) {
+    throw new Error("Product background must be a valid six-digit hex color.");
+  }
   if (!settings.fallback_hero_cta_href.startsWith("/") && !settings.fallback_hero_cta_href.startsWith("https://")) {
     throw new Error("The hero button link must begin with / or https://.");
   }

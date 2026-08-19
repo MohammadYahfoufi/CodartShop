@@ -126,6 +126,7 @@ export type StorefrontSettings = {
   catalog_eyebrow: string;
   catalog_title: string;
   catalog_search_placeholder: string;
+  product_background_color: string;
   story_eyebrow: string;
   story_title: string;
   story_body: string;

@@ -33,6 +33,7 @@ export const defaultStorefrontSettings: StorefrontSettings = {
   catalog_eyebrow: "The collection",
   catalog_title: "Tools worth using.",
   catalog_search_placeholder: "Search the collection",
+  product_background_color: "#e9ecf7",
   story_eyebrow: "Why Codart",
   story_title: "We believe good technology should feel simple.",
   story_body: "So we skip the endless catalog and choose a focused collection of products that earn their place in your day.",
@@ -58,10 +59,14 @@ export const defaultStorefrontSettings: StorefrontSettings = {
 export function normalizeStorefrontSettings(value: unknown): StorefrontSettings {
   if (!value || typeof value !== "object") return { ...defaultStorefrontSettings };
   const source = value as Record<string, unknown>;
-  return Object.fromEntries(Object.entries(defaultStorefrontSettings).map(([key, fallback]) => {
+  const normalized = Object.fromEntries(Object.entries(defaultStorefrontSettings).map(([key, fallback]) => {
     const candidate = source[key];
     return [key, typeof candidate === "string" ? candidate : fallback];
   })) as StorefrontSettings;
+  if (!/^#[0-9a-f]{6}$/i.test(normalized.product_background_color)) {
+    normalized.product_background_color = defaultStorefrontSettings.product_background_color;
+  }
+  return normalized;
 }
 
 async function readLocalSettings() {
