@@ -6,6 +6,24 @@ import { useEffect, useRef, useState } from "react";
 
 type CallStatus = "idle" | "connecting" | "live" | "error";
 
+class VoiceRequestError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+function friendlyVoiceError(error: unknown) {
+  if (error instanceof VoiceRequestError) return error.message;
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError") return "Microphone access was denied. Allow microphone access and try again.";
+    if (error.name === "NotFoundError") return "No microphone was found on this device.";
+    if (error.name === "NotReadableError") return "Your microphone is busy or unavailable. Close other audio apps and try again.";
+    if (error.name === "SecurityError") return "Microphone access requires a secure connection.";
+    if (error.name === "TimeoutError" || error.name === "AbortError") return "Voice chat took too long to connect. Please try again.";
+  }
+  return "Could not start voice chat. Please try again later.";
+}
+
 function encodePcm16(samples: Float32Array) {
   const bytes = new Uint8Array(samples.length * 2);
   const view = new DataView(bytes.buffer);
@@ -47,8 +65,7 @@ function VoiceIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5.5 11.5v.5a6.5 6.5 0 0 0 13 0v-.5M12 18.5V22M8.5 22h7"/></svg>;
 }
 
-export function VoiceAssistant() {
-  const [open, setOpen] = useState(false);
+export function VoiceAssistant({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<CallStatus>("idle");
   const [error, setError] = useState("");
   const [userText, setUserText] = useState("");
@@ -88,12 +105,16 @@ export function VoiceAssistant() {
   }
 
   function handleMessage(message: LiveServerMessage) {
-    const content = message.serverContent;
-    if (content?.interrupted) clearPlayback();
-    if (content?.inputTranscription?.text) setUserText(content.inputTranscription.text);
-    if (content?.outputTranscription?.text) setAssistantText((text) => `${text}${content.outputTranscription?.text ?? ""}`);
-    for (const part of content?.modelTurn?.parts ?? []) if (part.inlineData?.data) playAudio(part.inlineData.data);
-    if (content?.turnComplete) setAssistantText((text) => text.trim());
+    try {
+      const content = message.serverContent;
+      if (content?.interrupted) clearPlayback();
+      if (content?.inputTranscription?.text) setUserText(content.inputTranscription.text);
+      if (content?.outputTranscription?.text) setAssistantText((text) => `${text}${content.outputTranscription?.text ?? ""}`);
+      for (const part of content?.modelTurn?.parts ?? []) if (part.inlineData?.data) playAudio(part.inlineData.data);
+      if (content?.turnComplete) setAssistantText((text) => text.trim());
+    } catch {
+      void failCall("The voice response could not be played. Please try again.");
+    }
   }
 
   async function cleanUp() {
@@ -108,16 +129,31 @@ export function VoiceAssistant() {
     await outputContextRef.current?.close().catch(() => undefined);
     inputContextRef.current = null;
     outputContextRef.current = null;
-    sessionRef.current?.close();
+    const session = sessionRef.current;
     sessionRef.current = null;
+    try { session?.close(); } catch { /* The connection may already be closed. */ }
   }
 
   async function endCall() {
     endingRef.current = true;
-    sessionRef.current?.sendRealtimeInput({ audioStreamEnd: true });
+    try { sessionRef.current?.sendRealtimeInput({ audioStreamEnd: true }); } catch { /* Continue cleanup. */ }
     await cleanUp();
     setStatus("idle");
     endingRef.current = false;
+  }
+
+  async function failCall(message: string) {
+    if (endingRef.current) return;
+    endingRef.current = true;
+    await cleanUp();
+    setError(message);
+    setStatus("error");
+    endingRef.current = false;
+  }
+
+  async function closeAssistant() {
+    if (status === "live" || status === "connecting") await endCall();
+    onClose();
   }
 
   async function startCall() {
@@ -128,11 +164,28 @@ export function VoiceAssistant() {
     endingRef.current = false;
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new VoiceRequestError(400, "Voice chat is not supported by this browser or connection.");
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       streamRef.current = stream;
-      const response = await fetch("/api/ai/live-token", { method: "POST" });
-      const payload = await response.json() as { token?: string; model?: string; maxSessionMinutes?: number; error?: string };
-      if (!response.ok || !payload.token || !payload.model) throw new Error(payload.error ?? "Could not start voice chat.");
+      const response = await fetch("/api/ai/live-token", {
+        method: "POST",
+        signal: AbortSignal.timeout(25_000),
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.toLowerCase().includes("application/json")) {
+        throw new VoiceRequestError(response.status, "Voice chat returned an invalid response. Please try again later.");
+      }
+      let payload: { token?: string; model?: string; maxSessionMinutes?: number; error?: string };
+      try {
+        payload = await response.json() as typeof payload;
+      } catch {
+        throw new VoiceRequestError(response.status, "Voice chat returned an invalid response. Please try again later.");
+      }
+      if (!response.ok || !payload.token || !payload.model) {
+        throw new VoiceRequestError(response.status, payload.error ?? "Could not start voice chat. Please try again later.");
+      }
 
       const outputContext = new AudioContext({ sampleRate: 24000 });
       await outputContext.resume();
@@ -144,8 +197,8 @@ export function VoiceAssistant() {
         model: payload.model,
         callbacks: {
           onmessage: handleMessage,
-          onerror: (event) => { void cleanUp(); setError(event.message || "The voice connection encountered an error."); setStatus("error"); },
-          onclose: () => { if (!endingRef.current) { void cleanUp(); setStatus((current) => current === "connecting" ? "error" : "idle"); } },
+          onerror: () => { void failCall("The voice connection encountered an error. Please try again."); },
+          onclose: () => { if (!endingRef.current) void failCall("The voice connection ended. Please try again."); },
         },
         config: {
           responseModalities: [Modality.AUDIO],
@@ -164,8 +217,12 @@ export function VoiceAssistant() {
       silentOutput.gain.value = 0;
       processor.onaudioprocess = (event) => {
         if (!sessionRef.current) return;
-        const samples = resample(event.inputBuffer.getChannelData(0), inputContext.sampleRate, 16000);
-        sessionRef.current.sendRealtimeInput({ audio: { data: encodePcm16(samples), mimeType: "audio/pcm;rate=16000" } });
+        try {
+          const samples = resample(event.inputBuffer.getChannelData(0), inputContext.sampleRate, 16000);
+          sessionRef.current.sendRealtimeInput({ audio: { data: encodePcm16(samples), mimeType: "audio/pcm;rate=16000" } });
+        } catch {
+          void failCall("Your microphone audio could not be sent. Please try again.");
+        }
       };
       microphone.connect(processor);
       processor.connect(silentOutput);
@@ -179,7 +236,7 @@ export function VoiceAssistant() {
       }, sessionMinutes * 60 * 1000);
     } catch (caught) {
       await cleanUp();
-      setError(caught instanceof Error ? caught.message : "Could not start voice chat.");
+      setError(friendlyVoiceError(caught));
       setStatus("error");
     }
   }
@@ -196,9 +253,9 @@ export function VoiceAssistant() {
     sessionRef.current?.close();
   }, []);
 
-  return <div className={`voice-assistant ${open ? "is-open" : ""}`}>
-    {open && <section className="voice-panel" role="dialog" aria-label="Codart AI voice assistant">
-      <div className="voice-panel-head"><div><span>CODART AI</span><h2>AI Shopping Assistant</h2></div><button type="button" onClick={() => { if (status === "live") void endCall(); setOpen(false); }} aria-label="Close voice assistant">×</button></div>
+  return <div className="voice-assistant is-open">
+    <section className="voice-panel" role="dialog" aria-label="Codart AI voice assistant">
+      <div className="voice-panel-head"><div><span>CODART AI</span><h2>Talk to AI</h2></div><button type="button" onClick={() => void closeAssistant()} aria-label="Close voice assistant">×</button></div>
       <p className="voice-intro">Ask for help choosing products or navigating the store. Your microphone is used only while the call is active.</p>
       <div className={`voice-orb ${status === "live" ? "is-live" : ""}`}><VoiceIcon /></div>
       <p className="voice-status">{status === "connecting" ? "Connecting securely…" : status === "live" ? "Listening — speak naturally" : status === "error" ? "Call unavailable" : "Ready when you are"}</p>
@@ -206,7 +263,6 @@ export function VoiceAssistant() {
       {error && <p className="voice-error">{error}{error.toLowerCase().includes("sign in") && <> <Link href="/login?next=/">Sign in</Link></>}</p>}
       {status === "live" || status === "connecting" ? <button type="button" className="voice-end" onClick={() => void endCall()} disabled={status === "connecting"}>End call</button> : <button type="button" className="voice-start" onClick={() => void startCall()}>Start voice call</button>}
       <small>Powered by Gemini. AI responses may be inaccurate.</small>
-    </section>}
-    <button type="button" className="voice-launcher" onClick={() => setOpen((value) => !value)} aria-label={open ? "Close AI voice assistant" : "Open AI voice assistant"} aria-expanded={open}><VoiceIcon /><span>Talk to AI</span></button>
+    </section>
   </div>;
 }

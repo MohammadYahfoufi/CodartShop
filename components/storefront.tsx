@@ -18,7 +18,6 @@ import { ProductVisual } from "@/components/product-visual";
 import { ProductGridSkeleton } from "@/components/skeletons";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { AuthButton } from "@/components/auth-button";
-import { VoiceAssistant } from "@/components/voice-assistant";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { deliveryAreas, getDeliveryArea, getPaymentMethod, paymentMethods } from "@/lib/checkout";
 import { realtimeTopics } from "@/lib/realtime-topics";
@@ -685,8 +684,6 @@ export function Storefront({
           <span>{settings.footer_tagline}</span>
         </div>
       </footer>
-
-      <VoiceAssistant />
 
       {selectedProduct && <ProductDetailsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />}
 

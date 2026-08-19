@@ -3,7 +3,7 @@ import './globals.css';
 import './admin-enhancements.css';
 import { AnalyticsTracker } from '@/components/analytics-tracker';
 import { getStorefrontSettings } from '@/lib/storefront-settings';
-import ChatWidget from '@/components/chat-widget';
+import { AssistantHub } from '@/components/assistant-hub';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,8 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth">
       <body className="min-h-full">
         <AnalyticsTracker />
-        {children} <ChatWidget />
+        {children}
+        <AssistantHub />
       </body>
     </html>
   );

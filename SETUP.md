@@ -15,6 +15,7 @@ SUPABASE_SECRET_KEY=YOUR_SB_SECRET_KEY
 ADMIN_EMAILS=owner@example.com
 NEXT_PUBLIC_WHATSAPP_NUMBER=9647501234567
 GEMINI_API_KEY=your_server_only_gemini_key
+GROQ_API_KEY=your_server_only_groq_key
 ```
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted for projects that still use legacy anon keys. `SUPABASE_SERVICE_ROLE_KEY` is accepted for older server keys. Keep the secret/service-role key private and never prefix it with `NEXT_PUBLIC_`. Separate multiple admin emails with commas. The WhatsApp number must be in international format without `+`, spaces, or punctuation.
@@ -42,9 +43,13 @@ The supplied template displays Supabase's `{{ .Token }}` value as a verification
 
 Add `GEMINI_API_KEY` to `.env.local` and to the Vercel Production and Preview environments. Keep it server-only and never prefix it with `NEXT_PUBLIC_`. Signed-in customers can open **Talk to AI** on the storefront; the server exchanges the permanent key for a short-lived, single-use Gemini Live token, while microphone audio streams directly between the browser and Gemini.
 
+The text chatbot uses Groq first and automatically retries with Gemini if Groq is missing, rate-limited, times out, or fails. If Gemini is selected as primary, it falls back to Groq in the same way. Calls are sequential, so a successful request consumes only one provider. The providers share the same live catalog/storefront knowledge rules. Defaults are Groq's production `openai/gpt-oss-20b` and `gemini-3.7-flash`; override them with the server-only `GROQ_CHAT_MODEL` and `GEMINI_CHAT_MODEL` variables. Set `AI_CHAT_PRIMARY_PROVIDER=gemini` to prefer Gemini; omit it or set it to `groq` to prefer Groq. The voice assistant continues to use Gemini Live only.
+
+Run `supabase/ai-chat-security.sql` in the Supabase SQL Editor before enabling text chat. Text chat requires sign-in and atomically enforces 10 messages per user per hour, 30 per user per UTC day, 20 per network per hour, 60 per network per UTC day, and 500 total messages per UTC day. Override these defaults with `AI_CHAT_USER_HOURLY_LIMIT`, `AI_CHAT_USER_DAILY_LIMIT`, `AI_CHAT_NETWORK_HOURLY_LIMIT`, `AI_CHAT_NETWORK_DAILY_LIMIT`, and `AI_CHAT_GLOBAL_DAILY_LIMIT`. Set a private `AI_CHAT_RATE_LIMIT_SECRET` in production to control the keyed network hashes.
+
 Run `supabase/ai-voice-security.sql` in the Supabase SQL Editor before enabling voice chat. It creates an RLS-protected usage ledger and an atomic quota function. Defaults are 5-minute calls, 2 calls per user per hour, 3 per user per UTC day, 3 per network per hour, 6 per network per day, and 30 total calls per UTC day. Override them with the `AI_VOICE_*` server environment variables documented in `app/api/ai/live-token/route.ts`. Network addresses are stored only as keyed hashes; set a separate `AI_VOICE_RATE_LIMIT_SECRET` in production if desired.
 
-The live token is locked to a server-generated, read-only snapshot of up to 100 catalog products. Gemini receives product names, descriptions, categories, specifications, current prices, sale prices, and stock counts, but it receives no database credentials and has no order, account, or admin tools.
+Both assistants receive a server-generated, read-only snapshot of up to 100 catalog products plus current storefront labels and contact details. Their AI providers receive product names, descriptions, categories, specifications, current prices, sale prices, and stock counts, but no database credentials or order, account, or admin tools. Customer-facing facts in `knowledge/` can supplement that snapshot for the text chatbot.
 
 Run `npm install`, then `npm run dev`. The storefront is at `/`; the multi-page administration area starts at `/admin`.
 
