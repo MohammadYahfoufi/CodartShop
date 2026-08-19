@@ -1,15 +1,18 @@
-import type { Metadata } from 'next';
-import ChatWidget from '../components/chat-widget';
-import './globals.css';
+import type { Metadata } from "next";
+import "./globals.css";
+import "./admin-enhancements.css";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
+import { getStorefrontSettings } from "@/lib/storefront-settings";
 
-export const metadata: Metadata = {
-  title: {
-    default: 'Codart — Future-ready tech',
-    template: '%s — Codart',
-  },
-  description:
-    'Curated technology for better work, play, and everything in between.',
-};
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getStorefrontSettings();
+  return {
+    title: { default: settings.seo_title.replace(/[—–]/g, "-"), template: `%s - ${settings.site_name}` },
+    description: settings.seo_description,
+  };
+}
 
 export default function RootLayout({
   children,
@@ -18,10 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body className="min-h-full">
-        {children}
-        <ChatWidget />
-      </body>
+      <body className="min-h-full"><AnalyticsTracker />{children}</body>
     </html>
   );
 }

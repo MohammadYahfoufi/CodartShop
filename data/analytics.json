@@ -1,0 +1,32 @@
+[
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/",
+    "event_count": 28
+  },
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/login",
+    "event_count": 44
+  },
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/favorites",
+    "event_count": 1
+  },
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/account",
+    "event_count": 1
+  },
+  {
+    "day": "2026-08-16",
+    "metric": "page_view",
+    "event_key": "/cart",
+    "event_count": 1
+  }
+]

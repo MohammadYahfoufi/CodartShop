@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
@@ -39,5 +40,10 @@ export function SearchIcon(props: IconProps) {
   return <svg {...base} {...props}><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>;
 }
 export function WhatsAppIcon(props: IconProps) {
-  return <svg {...base} {...props}><path d="M20 11.6a8 8 0 0 1-11.8 7L4 20l1.4-4A8 8 0 1 1 20 11.6Z" /><path d="M9 8.5c.4 3 2 4.7 5 5.5l1-1.2c.3-.3.6-.2 1-.1l1.4.7c.4.2.4.5.3.9-.4 1.2-1.3 1.8-2.5 1.7-4-.5-7.6-3.9-8-8 0-1 .5-1.8 1.5-2.2.4-.1.7 0 .9.4l.7 1.5c.2.3.1.6-.1.9L9 8.5Z" /></svg>;
+  const className = ["whatsapp-logo", props.className].filter(Boolean).join(" ");
+  return <Image className={className} src="/whatsapp logo no bg.png" alt="" width={1920} height={1080} />;
+}
+
+export function HeartIcon({ filled = false, ...props }: IconProps & { filled?: boolean }) {
+  return <svg {...base} {...props} fill={filled ? "currentColor" : "none"}><path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.8Z" /></svg>;
 }

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "local-fac36249-9119-47ba-bc1f-114d4f19319b",
+    "title": "twest",
+    "description": "test",
+    "price": 12,
+    "image_url": "/uploads/local-fac36249-9119-47ba-bc1f-114d4f19319b.webp",
+    "image_path": "uploads/local-fac36249-9119-47ba-bc1f-114d4f19319b.webp",
+    "created_at": "2026-08-16T15:34:12.785Z",
+    "updated_at": "2026-08-16T15:34:12.785Z"
+  }
+]

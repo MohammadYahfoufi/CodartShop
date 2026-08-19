@@ -1,0 +1,19 @@
+Voice quota check failed {
+  code: 'PGRST202',
+  details: 'Searched for the function public.claim_ai_voice_session with parameters p_global_daily_limit, p_network_daily_limit, p_network_hourly_limit, p_request_key, p_user_daily_limit, p_user_hourly_limit, p_user_id or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.',
+  hint: null,
+  message: 'Could not find the function public.claim_ai_voice_session(p_global_daily_limit, p_network_daily_limit, p_network_hourly_limit, p_request_key, p_user_daily_limit, p_user_hourly_limit, p_user_id) in the schema cache'
+}
+Voice quota check failed {
+  code: 'PGRST202',
+  details: 'Searched for the function public.claim_ai_voice_session with parameters p_global_daily_limit, p_network_daily_limit, p_network_hourly_limit, p_request_key, p_user_daily_limit, p_user_hourly_limit, p_user_id or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.',
+  hint: null,
+  message: 'Could not find the function public.claim_ai_voice_session(p_global_daily_limit, p_network_daily_limit, p_network_hourly_limit, p_request_key, p_user_daily_limit, p_user_hourly_limit, p_user_id) in the schema cache'
+}
+Voice quota check failed {
+  code: 'PGRST202',
+  details: 'Searched for the function public.claim_ai_voice_session with parameters p_global_daily_limit, p_network_daily_limit, p_network_hourly_limit, p_request_key, p_user_daily_limit, p_user_hourly_limit, p_user_id or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.',
+  hint: null,
+  message: 'Could not find the function public.claim_ai_voice_session(p_global_daily_limit, p_network_daily_limit, p_network_hourly_limit, p_request_key, p_user_daily_limit, p_user_hourly_limit, p_user_id) in the schema cache'
+}
+[browser] Warning: Ephemeral token support is experimental and may change in future versions. (components/voice-assistant.tsx:143:37)

@@ -1,90 +1,131 @@
 import {
-  collection,
-  DocumentData,
-  getCountFromServer,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  QueryDocumentSnapshot,
-  startAfter,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { PaginatedProducts, Product } from "@/lib/types";
+  getLocalProduct,
+  getLocalProductsPage,
+  getManagedLocalProducts,
+} from "@/lib/local-products";
+import {
+  getSupabaseAdmin,
+  isSupabaseConfigured,
+  isSupabaseTemporarilyUnavailable,
+  markSupabaseAvailable,
+  markSupabaseUnavailable,
+  isLocalPersistenceEnabled,
+} from "@/lib/supabase-server";
+import type { PaginatedProducts, Product, ProductQueryOptions } from "@/lib/types";
 
-const productsCollection = collection(db, "products");
-
-function mapProducts(
-  documents: QueryDocumentSnapshot<DocumentData>[],
-): Product[] {
-  return documents.map((document) => ({
-    id: document.id,
-    ...document.data(),
-  })) as Product[];
+function reportSupabaseError(context: string, error: unknown) {
+  console.warn(
+    `${context}:`,
+    error instanceof Error ? error.message : error,
+  );
 }
 
 export async function getProducts(): Promise<Product[]> {
-  try {
-    const snapshot = await getDocs(
-      query(productsCollection, orderBy("created_at", "desc")),
-    );
+  if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    return isLocalPersistenceEnabled ? getManagedLocalProducts() : [];
+  }
 
-    return mapProducts(snapshot.docs);
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    markSupabaseAvailable();
+    return (data ?? []) as Product[];
   } catch (error) {
-    console.error(
-      "Unable to load products from Firestore:",
-      error instanceof Error ? error.message : error,
-    );
-    return [];
+    markSupabaseUnavailable();
+    reportSupabaseError("Unable to load products from Supabase", error);
+    return isLocalPersistenceEnabled ? getManagedLocalProducts() : [];
   }
 }
 
 export async function getProductsPage(
   requestedPage = 1,
   requestedPageSize = 6,
+  requestedSearch = "",
+  options: ProductQueryOptions = {},
 ): Promise<PaginatedProducts> {
   const pageSize = Math.min(24, Math.max(1, requestedPageSize));
+  const search = requestedSearch.trim().slice(0, 80);
+  if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    return isLocalPersistenceEnabled
+      ? await getLocalProductsPage(requestedPage, pageSize, search, options)
+      : { products: [], page: 1, pageSize, total: 0, totalPages: 1, categories: [] };
+  }
 
   try {
-    const countSnapshot = await getCountFromServer(productsCollection);
-    const total = countSnapshot.data().count;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const page = Math.min(totalPages, Math.max(1, requestedPage));
-    const sort = orderBy("created_at", "desc");
-    let pageQuery;
+    const requested = Math.max(1, requestedPage);
+    const from = (requested - 1) * pageSize;
+    const to = from + pageSize - 1;
+    let query = getSupabaseAdmin()
+      .from("products")
+      .select("*", { count: "exact" });
 
-    if (page === 1) {
-      pageQuery = query(productsCollection, sort, limit(pageSize));
-    } else {
-      const boundarySnapshot = await getDocs(
-        query(productsCollection, sort, limit((page - 1) * pageSize)),
-      );
-      const cursor = boundarySnapshot.docs.at(-1);
-      pageQuery = cursor
-        ? query(productsCollection, sort, startAfter(cursor), limit(pageSize))
-        : query(productsCollection, sort, limit(pageSize));
+    if (search) {
+      const safeSearch = search.replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
+      if (safeSearch) {
+        query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+      }
     }
 
-    const snapshot = await getDocs(pageQuery);
+    const category = String(options.category ?? "").trim().slice(0, 80);
+    if (category) query = query.eq("category", category);
+    if (options.featured) query = query.eq("featured", true);
+    if (options.sort === "price-asc") query = query.order("price", { ascending: true });
+    else if (options.sort === "price-desc") query = query.order("price", { ascending: false });
+    else query = query.order("created_at", { ascending: false });
+
+    const { data, error, count } = await query
+      .range(from, to);
+
+    if (error) throw error;
+    markSupabaseAvailable();
+    const total = count ?? 0;
+    const { data: categoryRows } = await getSupabaseAdmin().from("products").select("category").not("category", "is", null);
+    const categories = [...new Set((categoryRows ?? []).map((row) => String(row.category)).filter(Boolean))].sort();
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (requested > totalPages) {
+      return getProductsPage(totalPages, pageSize, search, options);
+    }
 
     return {
-      products: mapProducts(snapshot.docs),
-      page,
+      products: (data ?? []) as Product[],
+      page: requested,
       pageSize,
       total,
       totalPages,
+      categories,
     };
   } catch (error) {
-    console.error(
-      "Unable to load paginated products from Firestore:",
-      error instanceof Error ? error.message : error,
-    );
-    return {
-      products: [],
-      page: 1,
-      pageSize,
-      total: 0,
-      totalPages: 1,
-    };
+    markSupabaseUnavailable();
+    reportSupabaseError("Unable to load products from Supabase", error);
+    return isLocalPersistenceEnabled
+      ? await getLocalProductsPage(requestedPage, pageSize, search, options)
+      : { products: [], page: 1, pageSize, total: 0, totalPages: 1, categories: [] };
+  }
+}
+
+export async function getProductById(id: string): Promise<Product | null> {
+  const localProduct = isLocalPersistenceEnabled ? await getLocalProduct(id) : null;
+  if (localProduct) return localProduct;
+  if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) return null;
+
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw error;
+    markSupabaseAvailable();
+    return (data as Product | null) ?? null;
+  } catch (error) {
+    markSupabaseUnavailable();
+    reportSupabaseError("Unable to load product from Supabase", error);
+    return null;
   }
 }
