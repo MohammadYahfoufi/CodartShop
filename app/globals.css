@@ -3188,7 +3188,7 @@ a {
 .admin-product-image {
   position: relative;
   aspect-ratio: 1.15;
-  background: #e7eaf5;
+  background: var(--product-image-background, #e9ecf7);
 }
 
 .admin-product-copy {

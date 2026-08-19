@@ -47,6 +47,29 @@ export async function GET() {
   return Response.json(await getStorefrontSettings());
 }
 
+export async function PATCH(request: Request) {
+  const unauthorized = await requireAdminAccess();
+  if (unauthorized) return unauthorized;
+  try {
+    const body = await request.json() as { productBackgroundColor?: unknown };
+    const color = typeof body.productBackgroundColor === "string" ? body.productBackgroundColor.trim().toLowerCase() : "";
+    if (!/^#[0-9a-f]{6}$/.test(color)) {
+      return Response.json({ error: "Choose a valid six-digit background color." }, { status: 400 });
+    }
+    const current = await getStorefrontSettings();
+    const next = { ...current, product_background_color: color };
+    await saveStorefrontSettings(next);
+    return Response.json({ product_background_color: color });
+  } catch (error) {
+    console.error("Product background update failed:", error);
+    const malformedJson = error instanceof SyntaxError;
+    return Response.json(
+      { error: malformedJson ? "The background color request was invalid." : errorMessage(error) },
+      { status: malformedJson ? 400 : 500 },
+    );
+  }
+}
+
 export async function PUT(request: Request) {
   const unauthorized = await requireAdminAccess();
   if (unauthorized) return unauthorized;

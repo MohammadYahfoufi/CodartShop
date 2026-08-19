@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, DragEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, DragEvent, FormEvent, type CSSProperties, useEffect, useState } from "react";
 import { ArrowIcon, BagIcon, CloseIcon, EditIcon, ImageIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
 import { ProductVisual } from "@/components/product-visual";
 import { BannerManager } from "@/components/banner-manager";
@@ -56,6 +56,7 @@ export function AdminDashboard({
   initialSlides,
   configured,
   productsOnly = false,
+  initialProductBackgroundColor = "#e9ecf7",
 }: {
   initialProducts: Product[];
   initialOrders: AdminOrder[];
@@ -63,6 +64,7 @@ export function AdminDashboard({
   initialSlides: HeroSlide[];
   configured: boolean;
   productsOnly?: boolean;
+  initialProductBackgroundColor?: string;
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [orders, setOrders] = useState(initialOrders);
@@ -81,6 +83,8 @@ export function AdminDashboard({
   const [saving, setSaving] = useState(false);
   const [processingImages, setProcessingImages] = useState(false);
   const [removeBackgroundEnabled, setRemoveBackgroundEnabled] = useState(false);
+  const [productBackgroundColor, setProductBackgroundColor] = useState(initialProductBackgroundColor);
+  const [savingProductBackground, setSavingProductBackground] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState("");
@@ -102,6 +106,29 @@ export function AdminDashboard({
   }, [productsOnly]);
 
   function notify(message: string, tone: ToastMessage["tone"] = "info") { setToasts((items) => [...items, { id: Date.now() + Math.random(), message, tone }]); }
+
+  async function saveProductBackground() {
+    if (!/^#[0-9a-f]{6}$/i.test(productBackgroundColor)) {
+      notify("Enter a valid six-digit color, such as #e9ecf7.", "error");
+      return;
+    }
+    setSavingProductBackground(true);
+    try {
+      const response = await fetch("/api/storefront-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productBackgroundColor }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to save the product background.");
+      setProductBackgroundColor(result.product_background_color);
+      notify("Background color applied to every product.", "success");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to save the product background.", "error");
+    } finally {
+      setSavingProductBackground(false);
+    }
+  }
 
   function resetForm() {
     previews.forEach((preview) => URL.revokeObjectURL(preview));
@@ -263,7 +290,7 @@ export function AdminDashboard({
   const visibleProducts = matchingProducts.slice((Math.min(productPage, productPages) - 1) * pageSize, Math.min(productPage, productPages) * pageSize);
 
   return (
-    <main className="admin-shell">
+    <main className="admin-shell" style={{ "--product-image-background": productBackgroundColor } as CSSProperties}>
       <header className="admin-header">
         <div><p className="eyebrow">Codart workspace</p><h1>Product administration</h1><p>Create and maintain the storefront collection.</p></div>
         <Link href="/" className="secondary-button">View storefront <ArrowIcon /></Link>
@@ -293,6 +320,19 @@ export function AdminDashboard({
               <div className="image-processing-choice" aria-label="Choose image background processing">
                 <button type="button" className={!removeBackgroundEnabled ? "is-active" : ""} aria-pressed={!removeBackgroundEnabled} disabled={processingImages} onClick={() => setRemoveBackgroundEnabled(false)}><strong>Keep background</strong><small>Optimize the original image</small></button>
                 <button type="button" className={removeBackgroundEnabled ? "is-active" : ""} aria-pressed={removeBackgroundEnabled} disabled={processingImages} onClick={() => setRemoveBackgroundEnabled(true)}><strong>Remove background</strong><small>Use IMG.LY AI</small></button>
+              </div>
+              <div className="product-page-color-control">
+                <span className="product-page-color-preview" style={{ backgroundColor: productBackgroundColor }} aria-hidden="true" />
+                <label>
+                  <strong>Background color for every product</strong>
+                  <span>
+                    <input type="color" value={productBackgroundColor} onChange={(event) => setProductBackgroundColor(event.target.value)} aria-label="Choose product background color" />
+                    <input className="product-page-color-hex" value={productBackgroundColor} maxLength={7} onChange={(event) => setProductBackgroundColor(event.target.value)} aria-label="Product background hex color" />
+                  </span>
+                </label>
+                <button type="button" onClick={() => void saveProductBackground()} disabled={savingProductBackground}>
+                  {savingProductBackground ? "Applying…" : "Apply to all"}
+                </button>
               </div>
               <label
               className={`upload-zone ${isDragging ? "is-dragging" : ""}`}
