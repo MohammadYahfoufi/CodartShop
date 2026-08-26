@@ -491,8 +491,8 @@ a {
 .home-carousel-art {
   position: absolute;
   z-index: -1;
-  right: clamp(-70px, 4vw, 70px);
-  width: min(43vw, 600px);
+  right: clamp(-45px, 2vw, 45px);
+  width: min(48vw, 680px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -503,28 +503,98 @@ a {
   display: none;
 }
 
-.home-carousel-art span {
+.home-carousel-core {
+  width: 28%;
+  height: 28%;
   position: absolute;
-  inset: 7%;
-  border: 1px solid rgba(121, 143, 255, .28);
+  z-index: 4;
+  left: 36%;
+  top: 36%;
+  display: block;
+  filter: drop-shadow(0 28px 55px rgba(42, 48, 164, .22));
+}
+
+.hero-category-orbit {
+  position: absolute;
+  z-index: 3;
+  inset: 1%;
+  border: 1px solid rgba(67, 104, 229, .38);
   border-radius: 50%;
+  box-shadow: 0 0 36px rgba(67, 74, 207, .06), inset 0 0 30px rgba(86, 67, 211, .04);
+  pointer-events: none;
+  animation: heroOrbitClockwise 22s linear infinite;
 }
 
-.home-carousel-art span:nth-child(2) {
-  inset: 22%;
-  border-color: rgba(117, 67, 242, .55);
+.hero-category-orbit.orbit-counterclockwise {
+  inset: 25%;
+  border-color: rgba(104, 83, 230, .4);
+  animation: heroOrbitCounterclockwise 29s linear infinite;
 }
 
-.home-carousel-art b {
-  width: 38%;
+.hero-orbit-item {
+  width: 25%;
   aspect-ratio: 1;
-  border-radius: 34%;
-  background: linear-gradient(145deg, #1682ee, #7135ed);
-  display: grid;
-  place-items: center;
-  font-size: clamp(62px, 8vw, 118px);
-  transform: rotate(-10deg);
-  box-shadow: 0 30px 100px rgba(65, 63, 226, .35);
+  position: absolute;
+  filter: drop-shadow(0 18px 28px rgba(42, 48, 164, .2));
+  animation: heroKeepUprightClockwise 22s linear infinite;
+}
+
+.hero-orbit-item img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.orbit-clockwise .item-charger {
+  left: 37.5%;
+  top: -12.5%;
+}
+
+.orbit-clockwise .item-earbuds {
+  left: 37.5%;
+  bottom: -12.5%;
+}
+
+.orbit-counterclockwise .hero-orbit-item {
+  width: 37%;
+  animation: heroKeepUprightCounterclockwise 29s linear infinite;
+}
+
+.orbit-counterclockwise .item-cable {
+  left: -18.5%;
+  top: 31.5%;
+}
+
+.orbit-counterclockwise .item-power-bank {
+  right: -18.5%;
+  top: 31.5%;
+}
+
+.home-carousel-art::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 31%;
+  border: 2px dashed rgba(90, 105, 235, .32);
+  border-radius: 50%;
+  box-shadow: 0 0 38px rgba(76, 75, 219, .08);
+  pointer-events: none;
+}
+
+@keyframes heroOrbitClockwise {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes heroOrbitCounterclockwise {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes heroKeepUprightClockwise {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes heroKeepUprightCounterclockwise {
+  to { transform: rotate(360deg); }
 }
 
 .carousel-footer {
@@ -4015,10 +4085,10 @@ a {
   }
 
   .home-carousel-art {
-    width: 370px;
-    right: -155px;
-    bottom: 75px;
-    opacity: .48;
+    width: 430px;
+    right: -105px;
+    bottom: 65px;
+    opacity: .68;
   }
 
   .carousel-footer {
@@ -4404,6 +4474,11 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
+  .hero-category-orbit,
+  .hero-orbit-item {
+    animation: none;
+  }
 
   .skeleton,
   .route-progress {

@@ -1,5 +1,8 @@
 "use client";
 
+/* Animated SVG assets require native img elements so their embedded motion runs reliably. */
+/* eslint-disable @next/next/no-img-element */
+
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -28,7 +31,7 @@ export function HeroCarousel({ slides, settings }: { slides: HeroSlide[]; settin
     <section className={`home-carousel ${slide.image_url ? "has-image" : "is-fallback"}`} aria-roledescription="carousel" aria-label="Featured collection">
       {slide.image_url && <Image key={slide.image_url} className="home-carousel-image" src={slide.image_url} alt="" fill priority sizes="100vw" />}
       <div className="home-carousel-shade" />
-      <div className="home-carousel-art" aria-hidden="true"><span /><span /><b>C</b></div>
+      <div className="home-carousel-art" role="group" aria-label="Codart Tech Core and product categories"><img className="home-carousel-core" src="/icons/codart-tech-core.svg" alt="Glowing Codart Tech Core" /><div className="hero-category-orbit orbit-clockwise"><div className="hero-orbit-item item-charger"><img src="/icons/chargers.svg" alt="Charger" /></div><div className="hero-orbit-item item-earbuds"><img src="/icons/earbuds.svg" alt="Earbuds" /></div></div><div className="hero-category-orbit orbit-counterclockwise"><div className="hero-orbit-item item-cable"><img src="/icons/cables.svg" alt="Cable" /></div><div className="hero-orbit-item item-power-bank"><img src="/icons/power-banks.svg" alt="Power bank" /></div></div></div>
       <div className="home-carousel-content" key={slide.id}>
         <p className="eyebrow">{settings.hero_eyebrow}</p>
         <h1>{slide.title}</h1>

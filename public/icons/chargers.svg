@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Animated charger icon</title><desc id="desc">A charger gently floats while an electric bolt pulses.</desc>
+  <defs><linearGradient id="g" x1="48" y1="42" x2="267" y2="278" gradientUnits="userSpaceOnUse"><stop stop-color="#168BFF"/><stop offset="1" stop-color="#8B35F5"/></linearGradient><filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <style>.float{transform-box:fill-box;transform-origin:center;animation:float 3.2s ease-in-out infinite}.pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.65s ease-in-out infinite}.dash{stroke-dasharray:10 14;animation:flow 2s linear infinite}@keyframes float{50%{transform:translateY(-9px) rotate(1.5deg)}}@keyframes pulse{50%{transform:scale(1.13);opacity:1}}@keyframes flow{to{stroke-dashoffset:-48}}@media(prefers-reduced-motion:reduce){*{animation:none!important}}</style>
+  <circle cx="160" cy="160" r="122" fill="none" stroke="url(#g)" stroke-width="2" opacity=".22" class="dash"/><circle cx="160" cy="160" r="92" fill="url(#g)" opacity=".09"/>
+  <g class="float" fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="91" y="103" width="138" height="130" rx="30"/><path d="M126 103V77M194 103V77M121 233v27M199 233v27"/></g>
+  <path class="pulse" filter="url(#glow)" d="m173 120-40 52h27l-13 39 41-55h-27z" fill="url(#g)" opacity=".86"/>
+</svg>

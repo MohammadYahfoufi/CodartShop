@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Animated cable icon</title><desc id="desc">A cable draws itself in a loop while data lights travel through it.</desc>
+  <defs><linearGradient id="g" x1="44" y1="45" x2="274" y2="272" gradientUnits="userSpaceOnUse"><stop stop-color="#168BFF"/><stop offset="1" stop-color="#8B35F5"/></linearGradient><filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <style>.cable{stroke-dasharray:450;stroke-dashoffset:450;animation:draw 3.2s ease-in-out infinite}.dot{offset-path:path('M90 101 C75 210 132 253 202 225 C268 199 257 112 207 104');animation:travel 3.2s ease-in-out infinite}@keyframes draw{0%{stroke-dashoffset:450}42%,82%{stroke-dashoffset:0}100%{stroke-dashoffset:-450}}@keyframes travel{0%,15%{offset-distance:0%;opacity:0}25%{opacity:1}82%{offset-distance:100%;opacity:1}100%{offset-distance:100%;opacity:0}}@media(prefers-reduced-motion:reduce){*{animation:none!important}.cable{stroke-dashoffset:0}.dot{display:none}}</style>
+  <circle cx="160" cy="160" r="111" fill="url(#g)" opacity=".07"/>
+  <path class="cable" d="M90 101C75 210 132 253 202 225c66-26 55-113 5-121" fill="none" stroke="url(#g)" stroke-width="12" stroke-linecap="round"/>
+  <g fill="none" stroke="url(#g)" stroke-width="9" stroke-linejoin="round"><path d="M62 68h61v52H62z"/><path d="M76 68V47M109 68V47"/><path d="M197 81h58v47h-58z"/><path d="M255 94h22v21h-22"/><path d="M211 94v20M228 94v20"/></g>
+  <circle class="dot" cx="0" cy="0" r="8" fill="#5D69FF" filter="url(#glow)"/>
+</svg>
