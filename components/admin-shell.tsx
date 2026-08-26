@@ -5,12 +5,13 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-type AdminIconName = "dashboard" | "storefront" | "products" | "banners" | "orders" | "sales" | "analytics";
+type AdminIconName = "dashboard" | "storefront" | "products" | "trending" | "banners" | "orders" | "sales" | "analytics";
 
 const navigation = [
   { href: "/admin", label: "Dashboard", icon: "dashboard" },
   { href: "/admin/storefront", label: "Storefront", icon: "storefront" },
   { href: "/admin/products", label: "Products", icon: "products" },
+  { href: "/admin/trending", label: "Trending", icon: "trending" },
   { href: "/admin/banners", label: "Banners", icon: "banners" },
   { href: "/admin/orders", label: "Orders", icon: "orders" },
   { href: "/admin/sales", label: "Sales", icon: "sales" },
@@ -22,6 +23,7 @@ function AdminIcon({ name }: { name: AdminIconName }) {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /><rect x="14" y="14" width="7" height="7" rx="2" /></>,
     storefront: <><path d="M4 10h16l-2-6H6l-2 6Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /><path d="M4 10a3 3 0 0 0 5 2 3 3 0 0 0 6 0 3 3 0 0 0 5-2" /></>,
     products: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4.4 7.7 7.6 4.4 7.6-4.4M12 12.1V21" /></>,
+    trending: <><path d="M13.5 2.8c.5 3.6-1.7 5.1-3.3 7.1-1.3 1.6-1.7 3.3-.7 5.2.4-1.6 1.5-2.7 2.8-3.8-.1 2.2 1.7 3.2 2.3 4.8.5 1.3.2 3-1 4.2 4.1-.7 6.4-3.5 6.4-7.2 0-4.1-2.8-7.8-6.5-10.3Z" /><path d="M9.5 15.1c-2.2.8-3.7 2.6-3.7 4.7" /></>,
     banners: <><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="m3 15 4.7-4.7 4 4 2.7-2.7L21 18M16.5 8h.01" /></>,
     orders: <><path d="M7 4h10l1 17H6L7 4Z" /><path d="M9 7V5a3 3 0 0 1 6 0v2" /></>,
     sales: <path d="M4 19V9M10 19V5M16 19v-7M22 19V3" />,

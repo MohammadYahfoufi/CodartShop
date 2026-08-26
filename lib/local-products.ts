@@ -109,6 +109,15 @@ export async function updateLocalProduct(
   return updated;
 }
 
+export async function setLocalProductFeatured(id: string, featured: boolean) {
+  const products = await getManagedLocalProducts();
+  const existing = products.find((product) => product.id === id);
+  if (!existing) return null;
+  const updated = { ...existing, featured, updated_at: new Date().toISOString() };
+  await saveManagedProducts(products.map((product) => product.id === id ? updated : product));
+  return updated;
+}
+
 export async function deleteLocalProduct(id: string) {
   const products = await getManagedLocalProducts();
   const existing = products.find((product) => product.id === id);
@@ -122,6 +131,12 @@ export async function getLocalProduct(id: string) {
   return (await getManagedLocalProducts()).find((product) => product.id === id)
     ?? localCatalog.find((product) => product.id === id)
     ?? null;
+}
+
+export async function getLocalFeaturedProducts(): Promise<Product[]> {
+  return [...await getManagedLocalProducts(), ...localCatalog]
+    .filter((product) => product.featured)
+    .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
 }
 
 export async function getLocalProductsPage(

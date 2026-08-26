@@ -1,4 +1,5 @@
 import {
+  getLocalFeaturedProducts,
   getLocalProduct,
   getLocalProductsPage,
   getManagedLocalProducts,
@@ -18,6 +19,28 @@ function reportSupabaseError(context: string, error: unknown) {
     `${context}:`,
     error instanceof Error ? error.message : error,
   );
+}
+
+export async function getFeaturedProducts(): Promise<Product[]> {
+  if (!isSupabaseConfigured || isSupabaseTemporarilyUnavailable()) {
+    return isLocalPersistenceEnabled ? getLocalFeaturedProducts() : [];
+  }
+
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from("products")
+      .select("*")
+      .eq("featured", true)
+      .order("updated_at", { ascending: false });
+
+    if (error) throw error;
+    markSupabaseAvailable();
+    return (data ?? []) as Product[];
+  } catch (error) {
+    markSupabaseUnavailable();
+    reportSupabaseError("Unable to load trending products from Supabase", error);
+    return isLocalPersistenceEnabled ? getLocalFeaturedProducts() : [];
+  }
 }
 
 export async function getProducts(): Promise<Product[]> {

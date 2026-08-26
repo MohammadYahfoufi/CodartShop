@@ -41,6 +41,7 @@ import type {
 
 type StorefrontProps = {
   initialPage: PaginatedProducts;
+  initialTrendingProducts?: Product[];
   initialFilter?: "all" | "favorites";
   initialCheckoutStep?: "cart" | "details";
   initialPanelOpen?: boolean;
@@ -89,8 +90,63 @@ function ProductDetailsModal({ product, onClose, onAdd }: { product: Product; on
   return <><div className="drawer-backdrop is-open" onClick={onClose} /><section className="product-modal" role="dialog" aria-modal="true" aria-label={product.title}><button type="button" className="icon-button product-modal-close" onClick={onClose} aria-label="Close product details"><CloseIcon /></button><div className="product-gallery"><div className="product-gallery-main"><ProductVisual src={activeImage} alt={product.title} /></div>{gallery.length > 1 && <div className="product-gallery-thumbs">{gallery.map((image) => <button type="button" className={activeImage === image.url ? "is-active" : ""} key={image.path} onClick={() => setActiveImage(image.url)}><ProductVisual src={image.url} alt={image.alt ?? product.title} /></button>)}</div>}</div><div className="product-modal-copy">{product.category && <p className="eyebrow">{product.category}</p>}<h2>{product.title}</h2><p>{product.description}</p><div className="product-modal-price">{product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}<strong>{money.format(productPrice(product))}</strong></div><span className={`inventory-label ${soldOut ? "is-out" : ""}`}>{soldOut ? "Out of stock" : `${product.stock_quantity ?? 10} in stock`}</span>{specifications.length > 0 && <dl className="product-specifications">{specifications.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl>}<button type="button" className="primary-button" disabled={soldOut} onClick={() => { onAdd(product); onClose(); }}>{soldOut ? "Unavailable" : "Add to cart"}<PlusIcon /></button></div></section></>;
 }
 
+function ProductCartControl({ product, quantity, onAdd, onChange }: { product: Product; quantity: number; onAdd: (product: Product) => void; onChange: (amount: number) => void }) {
+  const stock = product.stock_quantity ?? 10;
+  if (quantity > 0) {
+    return <div className="product-card-quantity" role="group" aria-label={`${product.title} quantity in cart`}>
+      <button type="button" onClick={() => onChange(-1)} aria-label={`Remove one ${product.title}`}><MinusIcon /></button>
+      <span aria-live="polite">{quantity}</span>
+      <button type="button" data-analytics="add_to_cart" onClick={() => onChange(1)} disabled={quantity >= stock} aria-label={`Add one more ${product.title}`}><PlusIcon /></button>
+    </div>;
+  }
+  return <button type="button" data-analytics="add_to_cart" onClick={() => onAdd(product)} disabled={stock <= 0} aria-label={`Add ${product.title} to cart`}>{stock <= 0 ? "Out of stock" : "Add to cart"}<PlusIcon /></button>;
+}
+
+function TrendingProductsCarousel({ products, cart, favoriteIds, onOpen, onAdd, onQuantityChange, onFavorite }: { products: Product[]; cart: CartItem[]; favoriteIds: string[]; onOpen: (product: Product) => void; onAdd: (product: Product) => void; onQuantityChange: (id: string, amount: number) => void; onFavorite: (id: string) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  function move(direction: -1 | 1) {
+    trackRef.current?.scrollBy({ left: direction * Math.max(300, trackRef.current.clientWidth * 0.78), behavior: "smooth" });
+  }
+
+  if (!products.length) return null;
+
+  return (
+    <section className="trending-section" aria-labelledby="trending-title">
+      <div className="trending-heading">
+        <div><p className="eyebrow">Popular right now</p><h2 id="trending-title">Trending products.</h2></div>
+        {products.length > 1 && <div className="trending-controls"><button type="button" onClick={() => move(-1)} aria-label="Show previous trending products"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next trending products"><ArrowIcon /></button></div>}
+      </div>
+      <div className="trending-track" ref={trackRef}>
+        {products.map((product, index) => {
+          const isFavorite = favoriteIds.includes(product.id);
+          const quantityInCart = cart.find((item) => item.id === product.id)?.quantity ?? 0;
+          return <article className="product-card trending-product-card" key={product.id}>
+            <div className="product-media">
+              <ProductVisual src={product.image_url} alt={product.title} priority={index < 2} />
+              <span className="product-index">{String(index + 1).padStart(2, "0")}</span>
+              <div className="product-badges">{product.sale_price != null && product.sale_price < product.price && <span className="sale-badge">Sale {Math.round((1 - product.sale_price / product.price) * 100)}%</span>}{(product.stock_quantity ?? 10) <= 0 && <span className="stock-badge">Out of stock</span>}</div>
+              <button type="button" data-analytics="favorite_product" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => onFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
+            </div>
+            <div className="product-card-body">
+              <button type="button" className="product-title-button" data-analytics="open_product" onClick={() => onOpen(product)}><h3>{product.title}</h3></button>
+              {product.category && <span className="product-category">{product.category}</span>}
+              <p>{product.description}</p>
+              <div className="product-action">
+                <strong className={product.sale_price != null && product.sale_price < product.price ? "sale-price" : ""}>{product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}{money.format(productPrice(product))}</strong>
+                <ProductCartControl product={product} quantity={quantityInCart} onAdd={onAdd} onChange={(amount) => onQuantityChange(product.id, amount)} />
+              </div>
+            </div>
+          </article>;
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function Storefront({
   initialPage,
+  initialTrendingProducts = [],
   initialFilter = "all",
   initialCheckoutStep = "cart",
   initialPanelOpen = false,
@@ -99,6 +155,7 @@ export function Storefront({
   settings,
 }: StorefrontProps) {
   const [productPage, setProductPage] = useState(initialPage);
+  const [trendingProducts, setTrendingProducts] = useState(initialTrendingProducts);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const filter = initialFilter;
@@ -307,6 +364,7 @@ export function Storefront({
       if (sort) parameters.set("sort", sort);
       if (featuredOnly) parameters.set("featured", "true");
       void fetch(`/api/products?${parameters}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result: PaginatedProducts | null) => { if (result) setProductPage(result); });
+      void fetch("/api/products/trending", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result: Product[] | null) => { if (result) setTrendingProducts(result); });
     }).subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [category, featuredOnly, productPage.page, productPage.pageSize, query, sort]);
@@ -402,7 +460,6 @@ export function Storefront({
           )
         : [...items, { ...product, quantity: 1 }];
     });
-    openCart();
   }
 
   function changeQuantity(id: string, amount: number) {
@@ -545,6 +602,8 @@ export function Storefront({
           </section>
         ) : <HeroCarousel slides={heroSlides} settings={settings} />}
 
+        {filter === "all" && <TrendingProductsCarousel products={trendingProducts} cart={cart} favoriteIds={favoriteIds} onOpen={setSelectedProduct} onAdd={addToCart} onQuantityChange={changeQuantity} onFavorite={toggleFavorite} />}
+
         <section className={`products-section ${filter === "favorites" ? "saved-products-section" : ""}`} id="products">
           <div className="section-heading">
             <div>
@@ -583,7 +642,7 @@ export function Storefront({
               {(productPage.categories ?? []).map((item) => <button type="button" className={category === item ? "is-active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}
             </div>
             <div className="catalog-selects">
-              <label><span className="sr-only">Featured filter</span><select value={featuredOnly ? "featured" : "all"} onChange={(event) => setFeaturedOnly(event.target.value === "featured")}><option value="all">All products</option><option value="featured">Featured only</option></select></label>
+              <label><span className="sr-only">Trending filter</span><select value={featuredOnly ? "featured" : "all"} onChange={(event) => setFeaturedOnly(event.target.value === "featured")}><option value="all">All products</option><option value="featured">Trending only</option></select></label>
               <label><span className="sr-only">Sort products</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="newest">Newest</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></label>
               <button type="button" className="filter-reset" onClick={() => { setCategory(""); setFeaturedOnly(false); setSort("newest"); }}>Reset</button>
             </div>
@@ -612,7 +671,7 @@ export function Storefront({
                     <div className="product-media">
                       <ProductVisual src={product.image_url} alt={product.title} priority={index < 2} />
                       <span className="product-index">{String(index + 1).padStart(2, "0")}</span>
-                      <div className="product-badges">{product.featured && <span>Featured</span>}{product.sale_price != null && product.sale_price < product.price && <span className="sale-badge">Sale {Math.round((1 - product.sale_price / product.price) * 100)}%</span>}{(product.stock_quantity ?? 10) <= 0 && <span className="stock-badge">Out of stock</span>}</div>
+                      <div className="product-badges">{product.sale_price != null && product.sale_price < product.price && <span className="sale-badge">Sale {Math.round((1 - product.sale_price / product.price) * 100)}%</span>}{(product.stock_quantity ?? 10) <= 0 && <span className="stock-badge">Out of stock</span>}</div>
                       <button type="button" data-analytics="favorite_product" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => toggleFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
                     </div>
                     <div className="product-card-body">
@@ -621,17 +680,7 @@ export function Storefront({
                       <p>{product.description}</p>
                       <div className="product-action">
                         <strong className={product.sale_price != null && product.sale_price < product.price ? "sale-price" : ""}>{product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}{money.format(productPrice(product))}</strong>
-                        <button
-                          type="button"
-                          data-analytics="add_to_cart"
-                          className={quantityInCart ? "is-in-cart" : ""}
-                          onClick={() => addToCart(product)}
-                          disabled={(product.stock_quantity ?? 10) <= 0}
-                          aria-label={`Add ${product.title} to cart${quantityInCart ? `, ${quantityInCart} currently in cart` : ""}`}
-                        >
-                          {(product.stock_quantity ?? 10) <= 0 ? "Out of stock" : quantityInCart ? `In cart · ${quantityInCart}` : "Add to cart"}
-                          <PlusIcon />
-                        </button>
+                        <ProductCartControl product={product} quantity={quantityInCart} onAdd={addToCart} onChange={(amount) => changeQuantity(product.id, amount)} />
                       </div>
                     </div>
                   </article>
