@@ -195,6 +195,26 @@
 .sales-bar-track i { position: absolute; inset: auto 0 0; background: linear-gradient(180deg, #1682ee, #7135ed); min-height: 2px; }
 .sales-bars strong { font-size: 9px; }
 
+.top-products-panel { margin-top: 22px; padding: 27px; border: 1px solid #e1e4ee; background: white; }
+.top-products-panel>.panel-heading>span { color: #858b9f; font-size: 8px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.top-products-list { display: flex; flex-direction: column; }
+.top-products-list>article { min-height: 66px; padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 38px minmax(0, 1fr) 95px 105px; align-items: center; gap: 16px; }
+.top-products-list>article:last-child { border-bottom: 0; }
+.top-product-rank { color: #9a9fb0; font-size: 8px; font-weight: 800; }
+.top-product-name { min-width: 0; display: grid; gap: 9px; }
+.top-product-name>strong { overflow: hidden; color: #252a43; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.top-product-name>i { width: 100%; height: 4px; overflow: hidden; border-radius: 999px; background: #eef0f6; }
+.top-product-name>i>b { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, #1682ee, #7135ed); }
+.top-product-quantity { color: #252a43; font-size: 13px; text-align: right; }
+.top-product-quantity small { color: #9297a9; font-size: 8px; font-weight: 600; }
+.top-product-revenue { color: #6044d8; font-size: 10px; font-weight: 800; text-align: right; }
+
+@media (max-width: 700px) {
+  .top-products-panel { padding: 19px; }
+  .top-products-list>article { grid-template-columns: 26px minmax(0, 1fr) 68px; gap: 10px; }
+  .top-product-revenue { display: none; }
+}
+
 .analytics-chart-panel { min-height: 430px; padding: 27px; border: 1px solid #e1e4ee; background: white; }
 .chart-legend { display: flex; align-items: center; gap: 18px; }
 .chart-legend span { color: var(--muted); display: inline-flex; align-items: center; gap: 7px; font-size: 9px; font-weight: 700; }
