@@ -22,6 +22,8 @@ GROQ_API_KEY=your_server_only_groq_key
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted for projects that still use legacy anon keys. `SUPABASE_SERVICE_ROLE_KEY` is accepted for older server keys. Keep the secret/service-role key private and never prefix it with `NEXT_PUBLIC_`. Separate multiple admin emails with commas. The WhatsApp number must be in international format without `+`, spaces, or punctuation.
 
+Set `NEXT_PUBLIC_SITE_URL` to the public production origin (for example, `https://shop.example.com`) so social sharing metadata always uses the correct absolute URL. Vercel deployment URLs are detected automatically when this variable is omitted.
+
 ## Login setup
 
 1. In **Supabase → Authentication → URL Configuration**, set your production Site URL and add `http://localhost:3000/auth/callback`, your LAN callback URL while testing, and your production `/auth/callback` URL to the redirect allow list.
