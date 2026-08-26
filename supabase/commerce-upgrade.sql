@@ -36,3 +36,30 @@ alter table public.orders drop constraint if exists orders_payment_method_check;
 update public.orders set payment_method = 'cash-on-delivery' where payment_method = 'bank-transfer';
 alter table public.orders add constraint orders_payment_method_check
   check (payment_method in ('cash-on-delivery', 'whish-money'));
+
+-- Keep historical order line snapshots, but clear their live product link.
+alter table public.order_items drop constraint if exists order_items_product_id_fkey;
+alter table public.order_items add constraint order_items_product_id_fkey
+  foreign key (product_id) references public.products(id) on delete set null;
+
+-- favorites and cart_items use text IDs to support the local development
+-- catalog, so a trigger supplies transactional cascade cleanup for them.
+create or replace function public.cascade_product_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.favorites where product_id = old.id::text;
+  delete from public.cart_items where product_id = old.id::text;
+  return old;
+end;
+$$;
+
+drop trigger if exists products_delete_cascade on public.products;
+create trigger products_delete_cascade
+before delete on public.products
+for each row execute function public.cascade_product_delete();
+
+revoke all on function public.cascade_product_delete() from public, anon, authenticated;

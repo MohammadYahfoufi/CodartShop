@@ -5,6 +5,8 @@
 
 For a project that was set up before account carts and order history were added, run `supabase/user-data-migration.sql` once in the SQL Editor. New projects only need `supabase/setup.sql`.
 
+For an existing project, run `supabase/product-delete-cascade.sql` once in the SQL Editor. It removes deleted products from favorites and carts automatically while preserving historical order line details.
+
 If Storage uploads succeed but banners do not appear, run `supabase/banner-migration.sql` once. It creates the `hero_slides` metadata table, repairs the `CodartlbShop` bucket configuration, and refreshes the API schema cache.
 3. Open **Project Settings → API Keys** and add the following to `.env.local`:
 

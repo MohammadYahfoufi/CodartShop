@@ -66,6 +66,29 @@ create table if not exists public.cart_items (
   primary key (user_id, product_id)
 );
 
+-- favorites and cart_items intentionally store text product IDs so local
+-- development catalog IDs remain supported. This trigger provides the same
+-- cleanup behavior as ON DELETE CASCADE for production UUID products.
+create or replace function public.cascade_product_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.favorites where product_id = old.id::text;
+  delete from public.cart_items where product_id = old.id::text;
+  return old;
+end;
+$$;
+
+drop trigger if exists products_delete_cascade on public.products;
+create trigger products_delete_cascade
+before delete on public.products
+for each row execute function public.cascade_product_delete();
+
+revoke all on function public.cascade_product_delete() from public, anon, authenticated;
+
 create table if not exists public.hero_slides (
   id uuid primary key default gen_random_uuid(),
   title text not null check (char_length(title) between 1 and 100),

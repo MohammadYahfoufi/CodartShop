@@ -129,6 +129,12 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/prod
     const { data: product, error: readError } = await supabase.from("products").select("image_url,image_path,images").eq("id", id).maybeSingle();
     if (readError) throw readError;
     if (!product) return Response.json({ error: "Product not found." }, { status: 404 });
+    const [favoritesCleanup, cartCleanup] = await Promise.all([
+      supabase.from("favorites").delete().eq("product_id", id),
+      supabase.from("cart_items").delete().eq("product_id", id),
+    ]);
+    if (favoritesCleanup.error) throw favoritesCleanup.error;
+    if (cartCleanup.error) throw cartCleanup.error;
     const { error: deleteError } = await supabase.from("products").delete().eq("id", id);
     if (deleteError) throw deleteError;
     const paths = [...new Set(productImages(product).map((image) => image.path).filter(Boolean))];
