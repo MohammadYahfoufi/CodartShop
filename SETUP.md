@@ -34,14 +34,15 @@ Set `NEXT_PUBLIC_SITE_URL` to the public production origin (for example, `https:
 ### Branded login email
 
 1. In **Supabase → Authentication → Email Templates**, open **Magic Link**.
-2. Set the subject to `Your secure Codart sign-in code`.
-3. Copy the complete contents of `supabase/email-templates/magic-link.html` into the template body and save it.
-4. In **Authentication → SMTP Settings**, enable custom SMTP and enter the host, port, username, and password supplied by your email provider. Set the sender name to `Codart` and use a verified sender address such as `login@your-domain.com`.
-5. Disable click/email tracking in the SMTP provider because rewritten authentication links can fail.
+2. Set the subject to `Your secure Codart sign-in code`, copy the complete contents of `supabase/email-templates/magic-link.html` into the template body, and save it.
+3. Open **Confirm signup**, use the same subject, copy the complete contents of `supabase/email-templates/confirm-signup.html` into the template body, and save it. Supabase uses this separate template the first time an email address signs in, so configuring both templates ensures every customer receives a code instead of a Continue link.
+4. In **Authentication → SMTP Settings**, enable custom SMTP and enter the host, port, username, and password supplied by Brevo. Set the sender name to `Codart` and use a sender address on a domain verified in Brevo, such as `login@your-domain.com`.
+5. In Brevo, authenticate the sender domain with the DKIM and SPF records Brevo provides. Add a DMARC record for the domain as well; start with a monitoring policy if the domain is not already using DMARC. These DNS records and the domain's sending reputation determine spam placement.
+6. Disable click/email tracking in Brevo because OTP emails do not need link tracking and rewritten authentication links can fail.
 
 Changing the HTML controls the design. A custom SMTP provider is required to replace Supabase's sender name and is also required for reliable production delivery to customers outside the Supabase project team.
 
-The supplied template displays Supabase's `{{ .Token }}` value as a verification code. Supabase supports codes from 6 to 10 digits, and the login page accepts that configured length on the device where sign-in was requested; the `/auth/callback` route remains in use for OAuth providers.
+Both supplied templates display Supabase's `{{ .Token }}` value as a verification code: **Confirm signup** handles a customer's first request and **Magic Link** handles later requests. Supabase supports codes from 6 to 10 digits, and the login page accepts that configured length on the device where sign-in was requested; the `/auth/callback` route remains in use for OAuth providers.
 
 ## Gemini voice assistant
 
