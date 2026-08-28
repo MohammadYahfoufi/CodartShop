@@ -1,4 +1,5 @@
 import type { CartItem, CheckoutDetails, Product } from "@/lib/types";
+import { matchesProductSearch } from "@/lib/product-search";
 
 export const CART_KEY = "codart-cart";
 export const FAVORITES_KEY = "codart-favorites";
@@ -26,14 +27,10 @@ export function filterProducts(
   favoriteIds: string[],
   filter: "all" | "favorites",
 ) {
-  const term = query.trim().toLowerCase();
-
   return products.filter((product) => {
     const matchesFilter =
       filter === "all" || favoriteIds.includes(product.id);
-    const matchesSearch =
-      !term ||
-      `${product.title} ${product.description}`.toLowerCase().includes(term);
+    const matchesSearch = matchesProductSearch(product, query);
 
     return matchesFilter && matchesSearch;
   });

@@ -4,6 +4,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { localCatalog } from "@/lib/catalog";
 import { isLocalPersistenceEnabled } from "@/lib/supabase-server";
+import { matchesProductSearch } from "@/lib/product-search";
 import type { PaginatedProducts, Product, ProductQueryOptions } from "@/lib/types";
 
 const dataDirectory = path.join(process.cwd(), "data");
@@ -146,12 +147,9 @@ export async function getLocalProductsPage(
   options: ProductQueryOptions = {},
 ): Promise<PaginatedProducts> {
   const pageSize = Math.min(24, Math.max(1, requestedPageSize));
-  const term = search.trim().toLowerCase();
   const allProducts = [...await getManagedLocalProducts(), ...localCatalog];
-  let matchingProducts = term
-    ? allProducts.filter((product) =>
-        `${product.title} ${product.description}`.toLowerCase().includes(term),
-      )
+  let matchingProducts = search.trim()
+    ? allProducts.filter((product) => matchesProductSearch(product, search))
     : allProducts;
   if (options.category) matchingProducts = matchingProducts.filter((product) => product.category === options.category);
   if (options.featured) matchingProducts = matchingProducts.filter((product) => product.featured);

@@ -13,6 +13,7 @@ import {
   isLocalPersistenceEnabled,
 } from "@/lib/supabase-server";
 import type { PaginatedProducts, Product, ProductQueryOptions } from "@/lib/types";
+import { matchesProductSearch } from "@/lib/product-search";
 
 function reportSupabaseError(context: string, error: unknown) {
   console.warn(
@@ -86,13 +87,6 @@ export async function getProductsPage(
       .from("products")
       .select("*", { count: "exact" });
 
-    if (search) {
-      const safeSearch = search.replace(/[,%()]/g, " ").replace(/\s+/g, " ").trim();
-      if (safeSearch) {
-        query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
-      }
-    }
-
     const category = String(options.category ?? "").trim().slice(0, 80);
     if (category) query = query.eq("category", category);
     if (options.featured) query = query.eq("featured", true);
@@ -100,23 +94,32 @@ export async function getProductsPage(
     else if (options.sort === "price-desc") query = query.order("price", { ascending: false });
     else query = query.order("created_at", { ascending: false });
 
-    const { data, error, count } = await query
-      .range(from, to);
+    const { data, error, count } = search
+      ? await query
+      : await query.range(from, to);
 
     if (error) throw error;
     markSupabaseAvailable();
-    const total = count ?? 0;
+    const matchedProducts = search
+      ? ((data ?? []) as Product[]).filter((product) => matchesProductSearch(product, search))
+      : (data ?? []) as Product[];
+    const total = search ? matchedProducts.length : count ?? 0;
     const { data: categoryRows } = await getSupabaseAdmin().from("products").select("category").not("category", "is", null);
     const categories = [...new Set((categoryRows ?? []).map((row) => String(row.category)).filter(Boolean))].sort();
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    if (requested > totalPages) {
+    if (!search && requested > totalPages) {
       return getProductsPage(totalPages, pageSize, search, options);
     }
 
+    const page = Math.min(requested, totalPages);
+    const products = search
+      ? matchedProducts.slice((page - 1) * pageSize, page * pageSize)
+      : matchedProducts;
+
     return {
-      products: (data ?? []) as Product[],
-      page: requested,
+      products,
+      page,
       pageSize,
       total,
       totalPages,

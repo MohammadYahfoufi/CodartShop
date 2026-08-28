@@ -21,6 +21,7 @@ import { AuthButton } from "@/components/auth-button";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { deliveryAreas, getDeliveryArea, getPaymentMethod, paymentMethods } from "@/lib/checkout";
 import { realtimeTopics } from "@/lib/realtime-topics";
+import { matchesProductSearch } from "@/lib/product-search";
 import {
   CART_KEY,
   FAVORITES_KEY,
@@ -370,13 +371,10 @@ export function Storefront({
   }, [category, featuredOnly, productPage.page, productPage.pageSize, query, sort]);
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
     return productPage.products.filter((product) => {
       const matchesFilter =
         filter === "all" || favoriteIds.includes(product.id);
-      const matchesSearch =
-        !term ||
-        `${product.title} ${product.description}`.toLowerCase().includes(term);
+      const matchesSearch = matchesProductSearch(product, query);
       return matchesFilter && matchesSearch;
     });
   }, [favoriteIds, filter, productPage.products, query]);
@@ -626,7 +624,10 @@ export function Storefront({
                     <button type="button" className="search-result" key={product.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSearchResult(product)} role="option" aria-selected={false}>
                       <span className="search-result-image"><ProductVisual src={product.image_url} alt="" /></span>
                       <span className="search-result-copy"><strong>{product.title}</strong><small>{product.description}</small></span>
-                      <b>{money.format(product.price)}</b><ArrowIcon className="search-result-arrow" />
+                      <b className={product.sale_price != null && product.sale_price < product.price ? "is-on-sale" : ""}>
+                        {product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}
+                        <span>{money.format(productPrice(product))}</span>
+                      </b><ArrowIcon className="search-result-arrow" />
                     </button>
                   )) : <div className="search-no-results"><SearchIcon /><span><strong>No products found</strong><small>Try a broader search term</small></span></div>}
                 </div>
