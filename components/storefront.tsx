@@ -165,15 +165,17 @@ function CategoryExplorer({ activeCategory, onSelect }: { activeCategory: string
     if (event.pointerType !== "mouse" || event.button !== 0) return;
     const track = event.currentTarget;
     mouseDragRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: track.scrollLeft, moved: false };
-    track.setPointerCapture(event.pointerId);
-    track.classList.add("is-dragging");
   }
 
   function moveCategoryDrag(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = mouseDragRef.current;
     if (event.pointerId !== drag.pointerId) return;
     const distance = event.clientX - drag.startX;
-    if (Math.abs(distance) > 4) drag.moved = true;
+    if (!drag.moved && Math.abs(distance) > 4) {
+      drag.moved = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.currentTarget.classList.add("is-dragging");
+    }
     if (!drag.moved) return;
     event.preventDefault();
     event.currentTarget.scrollLeft = drag.startScrollLeft - distance;
@@ -481,6 +483,7 @@ export function Storefront({
   );
   const catalogLoading = productsLoading || (filter === "favorites" && !hydrated);
   const searchResults = query.trim() ? filtered.slice(0, 5) : [];
+  const selectedCategoryLabel = PRODUCT_CATEGORIES.find((item) => item.value === category)?.label ?? category;
   const whatsappNumber = settings.whatsapp_number.replace(/\D/g, "") ||
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") || "";
 
@@ -735,8 +738,8 @@ export function Storefront({
         <section className={`products-section ${filter === "favorites" ? "saved-products-section" : ""}`} id="products">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">{filter === "favorites" ? "Your saved products" : settings.catalog_eyebrow}</p>
-              <h2>{filter === "favorites" ? "Favorites." : settings.catalog_title}</h2>
+              <p className="eyebrow">{filter === "favorites" ? "Your saved products" : category ? "Selected category" : settings.catalog_eyebrow}</p>
+              <h2>{filter === "favorites" ? "Favorites." : category ? `${selectedCategoryLabel}.` : settings.catalog_title}</h2>
             </div>
           </div>
 
