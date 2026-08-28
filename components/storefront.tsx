@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   ArrowIcon,
   BagIcon,
@@ -159,15 +160,44 @@ function TrendingProductsCarousel({ products, favoriteIds, onOpen, onFavorite }:
 
 function CategoryExplorer({ activeCategory, onSelect }: { activeCategory: string; onSelect: (category: string) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const mouseDragRef = useRef({ pointerId: -1, startX: 0, startScrollLeft: 0, moved: false });
 
-  function move(direction: -1 | 1) {
-    trackRef.current?.scrollBy({ left: direction * Math.max(280, trackRef.current.clientWidth * .72), behavior: "smooth" });
+  function startCategoryDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    const track = event.currentTarget;
+    mouseDragRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: track.scrollLeft, moved: false };
+    track.setPointerCapture(event.pointerId);
+    track.classList.add("is-dragging");
+  }
+
+  function moveCategoryDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+    if (event.pointerId !== drag.pointerId) return;
+    const distance = event.clientX - drag.startX;
+    if (Math.abs(distance) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    event.preventDefault();
+    event.currentTarget.scrollLeft = drag.startScrollLeft - distance;
+  }
+
+  function endCategoryDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerId !== mouseDragRef.current.pointerId) return;
+    const track = event.currentTarget;
+    if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
+    track.classList.remove("is-dragging");
+    mouseDragRef.current.pointerId = -1;
+    window.setTimeout(() => { mouseDragRef.current.moved = false; }, 0);
   }
 
   return <section className="category-explorer" aria-labelledby="category-explorer-title">
-    <div className="category-explorer-heading"><div><p className="eyebrow">Find your fit</p><h2 id="category-explorer-title"><span className="category-title-full">Shop by category.</span><span className="category-title-mobile">Categories</span></h2></div><div className="category-explorer-actions"><button type="button" className="category-view-all" onClick={() => onSelect("")}>View all</button><button type="button" onClick={() => move(-1)} aria-label="Show previous categories"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next categories"><ArrowIcon /></button></div></div>
-    <div className="category-explorer-track" ref={trackRef}>
-      {PRODUCT_CATEGORIES.map((item) => <button type="button" className={`category-explorer-card ${activeCategory === item.value ? "is-active" : ""}`} aria-pressed={activeCategory === item.value} onClick={() => onSelect(item.value)} key={item.value}><span><Image src={item.image} alt="" width={320} height={320} /></span><strong>{item.label}</strong></button>)}
+    <div className="category-explorer-heading"><div><p className="eyebrow">Find your fit</p><h2 id="category-explorer-title"><span className="category-title-full">Shop by category.</span><span className="category-title-mobile">Categories</span></h2></div></div>
+    <div className="category-explorer-track" ref={trackRef} onPointerDown={startCategoryDrag} onPointerMove={moveCategoryDrag} onPointerUp={endCategoryDrag} onPointerCancel={endCategoryDrag} onClickCapture={(event) => {
+      if (!mouseDragRef.current.moved) return;
+      event.preventDefault();
+      event.stopPropagation();
+      mouseDragRef.current.moved = false;
+    }}>
+      {PRODUCT_CATEGORIES.map((item) => <button type="button" className={`category-explorer-card ${activeCategory === item.value ? "is-active" : ""}`} aria-pressed={activeCategory === item.value} onClick={() => onSelect(activeCategory === item.value ? "" : item.value)} key={item.value}><span><Image src={item.image} alt="" width={320} height={320} draggable={false} /></span><strong>{item.label}</strong></button>)}
     </div>
   </section>;
 }
@@ -200,6 +230,7 @@ export function Storefront({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [highlightedProductId, setHighlightedProductId] = useState(focusProductId ?? "");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
@@ -211,6 +242,7 @@ export function Storefront({
   const favoritesStorageKeyRef = useRef(FAVORITES_KEY);
   const searchRequestRef = useRef(0);
   const searchMountedRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const lastScrollYRef = useRef(0);
 
   useEffect(() => {
@@ -461,6 +493,7 @@ export function Storefront({
   function selectSearchResult(product: Product) {
     setQuery(product.title);
     setSearchFocused(false);
+    setSearchOpen(false);
     requestAnimationFrame(() => {
       document.getElementById(`product-${product.id}`)?.scrollIntoView({
         behavior: "smooth",
@@ -623,6 +656,37 @@ export function Storefront({
           <Link href="/#contact">{settings.header_contact_label}</Link>
         </nav>
         <div className="header-actions">
+          <div className={`product-search header-search ${searchOpen ? "is-open" : ""}`} onFocus={() => { setSearchFocused(true); setHeaderVisible(true); }} onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setSearchFocused(false);
+        }}>
+          <button type="button" className="header-search-toggle" aria-label="Search products" aria-expanded={searchOpen} aria-controls="header-search-field" onClick={() => {
+            setSearchOpen(true);
+            setHeaderVisible(true);
+            requestAnimationFrame(() => searchInputRef.current?.focus());
+          }}><SearchIcon /></button>
+          <label className="search-box" id="header-search-field">
+            <SearchIcon />
+            <span className="sr-only">Search products</span>
+            <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={settings.catalog_search_placeholder} autoComplete="off" role="combobox" aria-expanded={searchFocused && Boolean(query.trim())} aria-controls="product-search-results" />
+            {query && <button type="button" className="search-clear" onClick={() => setQuery("")} aria-label="Clear search"><CloseIcon /></button>}
+            <button type="button" className="header-search-close" onClick={() => { setSearchOpen(false); setSearchFocused(false); }} aria-label="Close search"><CloseIcon /></button>
+          </label>
+          {searchFocused && query.trim() && (
+            <div className="search-results" id="product-search-results" role="listbox">
+              <div className="search-results-heading"><span>Products</span><small>{productPage.total} {productPage.total === 1 ? "match" : "matches"}</small></div>
+              {searchResults.length ? searchResults.map((product) => (
+                <button type="button" className="search-result" key={product.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSearchResult(product)} role="option" aria-selected={false}>
+                  <span className="search-result-image"><ProductVisual src={product.image_url} alt="" /></span>
+                  <span className="search-result-copy"><strong>{product.title}</strong><small>{product.description}</small></span>
+                  <b className={product.sale_price != null && product.sale_price < product.price ? "is-on-sale" : ""}>
+                    {product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}
+                    <span>{money.format(productPrice(product))}</span>
+                  </b><ArrowIcon className="search-result-arrow" />
+                </button>
+              )) : <div className="search-no-results"><SearchIcon /><span><strong>No products found</strong><small>Try a broader search term</small></span></div>}
+            </div>
+          )}
+          </div>
           <Link className="track-trigger" href="/track-order" aria-label="Track an order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14v12H5z" /><path d="M8 7V5h8v2M9 12h6M12 9v6" /></svg><span>{settings.header_track_label}</span></Link>
           <AuthButton />
           <Link
@@ -674,31 +738,6 @@ export function Storefront({
             <div>
               <p className="eyebrow">{filter === "favorites" ? "Your saved products" : settings.catalog_eyebrow}</p>
               <h2>{filter === "favorites" ? "Favorites." : settings.catalog_title}</h2>
-            </div>
-            <div className="product-search" onFocus={() => setSearchFocused(true)} onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget)) setSearchFocused(false);
-            }}>
-              <label className="search-box">
-                <SearchIcon />
-                <span className="sr-only">Search products</span>
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={settings.catalog_search_placeholder} autoComplete="off" role="combobox" aria-expanded={searchFocused && Boolean(query.trim())} aria-controls="product-search-results" />
-                {query && <button type="button" className="search-clear" onClick={() => setQuery("")} aria-label="Clear search"><CloseIcon /></button>}
-              </label>
-              {searchFocused && query.trim() && (
-                <div className="search-results" id="product-search-results" role="listbox">
-                  <div className="search-results-heading"><span>Products</span><small>{productPage.total} {productPage.total === 1 ? "match" : "matches"}</small></div>
-                  {searchResults.length ? searchResults.map((product) => (
-                    <button type="button" className="search-result" key={product.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSearchResult(product)} role="option" aria-selected={false}>
-                      <span className="search-result-image"><ProductVisual src={product.image_url} alt="" /></span>
-                      <span className="search-result-copy"><strong>{product.title}</strong><small>{product.description}</small></span>
-                      <b className={product.sale_price != null && product.sale_price < product.price ? "is-on-sale" : ""}>
-                        {product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}
-                        <span>{money.format(productPrice(product))}</span>
-                      </b><ArrowIcon className="search-result-arrow" />
-                    </button>
-                  )) : <div className="search-no-results"><SearchIcon /><span><strong>No products found</strong><small>Try a broader search term</small></span></div>}
-                </div>
-              )}
             </div>
           </div>
 
