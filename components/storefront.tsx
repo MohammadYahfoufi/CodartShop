@@ -167,7 +167,7 @@ function CategoryExplorer({ activeCategory, onSelect }: { activeCategory: string
   return <section className="category-explorer" aria-labelledby="category-explorer-title">
     <div className="category-explorer-heading"><div><p className="eyebrow">Find your fit</p><h2 id="category-explorer-title">Shop by category.</h2></div><div className="category-explorer-actions"><button type="button" className="category-view-all" onClick={() => onSelect("")}>View all</button><button type="button" onClick={() => move(-1)} aria-label="Show previous categories"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next categories"><ArrowIcon /></button></div></div>
     <div className="category-explorer-track" ref={trackRef}>
-      {PRODUCT_CATEGORIES.map((item) => <button type="button" className={`category-explorer-card ${activeCategory === item.value ? "is-active" : ""}`} aria-pressed={activeCategory === item.value} onClick={() => onSelect(item.value)} key={item.value}><span><Image src={item.image} alt="" width={320} height={320} unoptimized /></span><strong>{item.label}</strong></button>)}
+      {PRODUCT_CATEGORIES.map((item) => <button type="button" className={`category-explorer-card ${activeCategory === item.value ? "is-active" : ""}`} aria-pressed={activeCategory === item.value} onClick={() => onSelect(item.value)} key={item.value}><span><Image src={item.image} alt="" width={320} height={320} /></span><strong>{item.label}</strong></button>)}
     </div>
   </section>;
 }
