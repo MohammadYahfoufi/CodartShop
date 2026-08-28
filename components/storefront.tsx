@@ -133,7 +133,6 @@ function TrendingProductsCarousel({ products, favoriteIds, onOpen, onFavorite }:
     <section className="trending-section" aria-labelledby="trending-title">
       <div className="trending-heading">
         <div><p className="eyebrow">Popular right now</p><h2 id="trending-title"><span className="trending-title-full">Trending products.</span><span className="trending-title-mobile">Trending.</span></h2></div>
-        {products.length > 1 && <div className="trending-controls"><button type="button" onClick={() => move(-1)} aria-label="Show previous trending products"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next trending products"><ArrowIcon /></button></div>}
       </div>
       <div className="trending-stage">
         <article className="trending-product-card" key={product.id}>
@@ -687,7 +686,7 @@ export function Storefront({
             </div>
           )}
           </div>
-          <Link className="track-trigger" href="/track-order" aria-label="Track an order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14v12H5z" /><path d="M8 7V5h8v2M9 12h6M12 9v6" /></svg><span>{settings.header_track_label}</span></Link>
+          <Link className="track-trigger" href="/track-order" aria-label="Track an order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 7 8-4 8 4-8 4-8-4Z" /><path d="M4 7v10l8 4 8-4V7M12 11v10M8 5l8 4" /></svg><span>{settings.header_track_label}</span></Link>
           <AuthButton />
           <Link
             href="/favorites"

@@ -807,39 +807,6 @@ a {
   display: none;
 }
 
-.trending-controls {
-  display: flex;
-  gap: 9px;
-}
-
-.trending-controls button {
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: white;
-  color: #1b2147;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: color .2s, border-color .2s, transform .2s;
-}
-
-.trending-controls button:first-child svg {
-  transform: rotate(180deg);
-}
-
-.trending-controls button:hover {
-  color: #6239ed;
-  border-color: #6239ed;
-  transform: translateY(-2px);
-}
-
-.trending-controls svg {
-  width: 17px;
-}
-
 .trending-stage {
   width: min(600px, 100%);
   margin: 0 auto;
@@ -4468,11 +4435,6 @@ a {
     display: inline;
   }
 
-  .trending-controls button {
-    width: 42px;
-    height: 42px;
-  }
-
   .trending-product-card {
     border-radius: 18px;
   }
@@ -5161,12 +5123,16 @@ a {
 }
 
 .site-header .header-search-toggle svg,
-.site-header .track-trigger svg,
-.site-header .account-avatar svg,
 .site-header .favorite-trigger svg,
 .site-header .cart-trigger svg {
   width: 20px;
   height: 20px;
+}
+
+.site-header .track-trigger svg,
+.site-header .account-avatar svg {
+  width: 23px;
+  height: 23px;
 }
 
 .site-header .profile-menu .account-trigger i {
@@ -5248,7 +5214,7 @@ a {
   .site-header {
     width: calc(100% - 20px);
     height: 60px;
-    padding: 0 14px;
+    padding: 0 8px 0 14px;
     top: 10px;
     border-radius: 18px;
     justify-content: flex-start;
@@ -5267,6 +5233,27 @@ a {
 
   .site-header .main-nav {
     display: none;
+  }
+
+  .site-header .header-actions {
+    gap: 0;
+  }
+
+  .site-header .header-search,
+  .site-header .header-search-toggle,
+  .site-header .track-trigger,
+  .site-header .account-trigger,
+  .site-header .favorite-trigger,
+  .site-header .cart-trigger {
+    width: 30px;
+    max-width: 30px;
+    flex-basis: 30px;
+  }
+
+  .site-header .account-avatar {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
   }
 
   .header-search {
@@ -5356,8 +5343,8 @@ a {
 
 @media (max-width: 430px) {
   .site-header {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 14px;
+    padding-right: 8px;
   }
 
   .header-search {
