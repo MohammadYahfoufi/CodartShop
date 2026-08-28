@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type AdminIconName = "dashboard" | "storefront" | "products" | "trending" | "pos" | "banners" | "orders" | "sales" | "analytics";
 
@@ -36,9 +36,20 @@ function AdminIcon({ name }: { name: AdminIconName }) {
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuOpen]);
+
   return (
     <div className="admin-app-shell">
-      <aside className="admin-sidebar">
+      <button type="button" className={`admin-mobile-menu-toggle ${menuOpen ? "is-open" : ""}`} aria-label={menuOpen ? "Close admin menu" : "Open admin menu"} aria-expanded={menuOpen} aria-controls="admin-navigation" onClick={() => setMenuOpen((open) => !open)}><i /><i /><i /></button>
+      <button type="button" className={`admin-mobile-menu-backdrop ${menuOpen ? "is-open" : ""}`} aria-label="Close admin menu" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} />
+      <aside className={`admin-sidebar ${menuOpen ? "is-mobile-open" : ""}`} id="admin-navigation">
         <Link className="admin-sidebar-brand" href="/admin" aria-label="Codart admin dashboard">
           <Image className="admin-brand-logo" src="/codart-logo.png" alt="Codart" width={512} height={512} priority />
         </Link>
@@ -46,7 +57,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <nav aria-label="Admin sections">
           {navigation.map((item) => {
             const active = item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
-            return <Link key={item.href} href={item.href} className={active ? "is-active" : ""} aria-current={active ? "page" : undefined} title={item.label}><AdminIcon name={item.icon} /><span>{item.label}</span></Link>;
+            return <Link key={item.href} href={item.href} className={active ? "is-active" : ""} aria-current={active ? "page" : undefined} title={item.label} onClick={() => setMenuOpen(false)}><AdminIcon name={item.icon} /><span>{item.label}</span></Link>;
           })}
         </nav>
         <div className="admin-sidebar-footer"><span className="admin-store-status"><i />Store online</span><Link href="/"><span>Open storefront</span><b aria-hidden="true">↗</b></Link></div>
