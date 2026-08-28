@@ -782,25 +782,67 @@ a {
   width: 100%;
   max-width: 1800px;
   margin: auto;
-  padding: 94px clamp(24px, 3.3vw, 64px) 34px;
+  min-height: 720px;
+  padding: 72px clamp(40px, 5vw, 90px);
   overflow: hidden;
   border-top: 1px solid #e3defb;
   border-bottom: 1px solid #e3defb;
   background: linear-gradient(135deg, #f7f5ff 0%, #eef3ff 100%);
+  display: grid;
+  grid-template-columns: minmax(280px, .75fr) minmax(0, 1.25fr);
+  align-items: center;
+  gap: clamp(38px, 7vw, 130px);
 }
 
 .trending-heading {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 24px;
-  margin-bottom: 34px;
+  margin: 0;
 }
 
 .trending-heading h2 {
   margin: 0;
-  font: 650 clamp(40px, 5vw, 67px)/1 Arial, sans-serif;
+  font: 650 clamp(52px, 5vw, 82px)/.96 Arial, sans-serif;
   letter-spacing: -.055em;
+}
+
+.trending-heading>div {
+  width: 100%;
+  max-width: 570px;
+}
+
+.trending-quote {
+  margin: 42px 0 0;
+  padding: 22px 0 0 42px;
+  position: relative;
+  border-top: 1px solid rgba(76, 57, 181, .18);
+}
+
+.trending-quote::before {
+  content: "“";
+  position: absolute;
+  top: 10px;
+  left: 0;
+  color: #6940e8;
+  font: 700 58px/.8 Georgia, serif;
+}
+
+.trending-quote p {
+  margin: 0;
+  color: #171a3d;
+  font: 650 clamp(22px, 2vw, 32px)/1.12 Arial, sans-serif;
+  letter-spacing: -.035em;
+}
+
+.trending-quote footer {
+  margin-top: 13px;
+  color: #777e99;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .trending-title-mobile {
@@ -808,8 +850,9 @@ a {
 }
 
 .trending-stage {
-  width: min(600px, 100%);
-  margin: 0 auto;
+  width: min(760px, 100%);
+  margin: 0;
+  justify-self: end;
   padding: 15px 15px 8px;
   border: 1px solid rgba(151, 164, 220, .35);
   border-radius: 32px;
@@ -839,7 +882,7 @@ a {
 }
 
 .trending-banner-media {
-  min-height: 560px;
+  min-height: 610px;
   position: relative;
   overflow: hidden;
   border-radius: 22px;
@@ -849,7 +892,7 @@ a {
 }
 
 .trending-banner-image {
-  min-height: 390px;
+  min-height: 430px;
   position: relative;
   overflow: hidden;
   background: #e8e7f3;
@@ -4413,9 +4456,9 @@ a {
   }
 
   .trending-section {
-    padding-top: 44px;
-    padding-right: 24px;
-    padding-left: 24px;
+    min-height: 0;
+    padding: 44px 24px 34px;
+    display: block;
   }
 
   .trending-heading {
@@ -4424,6 +4467,25 @@ a {
 
   .trending-heading h2 {
     font-size: clamp(38px, 12vw, 54px);
+  }
+
+  .trending-quote {
+    margin-top: 24px;
+    padding: 17px 0 0 31px;
+  }
+
+  .trending-quote::before {
+    top: 10px;
+    font-size: 42px;
+  }
+
+  .trending-quote p {
+    font-size: 18px;
+  }
+
+  .trending-quote footer {
+    margin-top: 9px;
+    font-size: 8px;
   }
 
   .trending-title-full,
@@ -4449,6 +4511,8 @@ a {
   }
 
   .trending-stage {
+    width: min(600px, 100%);
+    margin: 0 auto;
     padding: 11px 11px 6px;
     border-radius: 25px;
   }

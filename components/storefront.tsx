@@ -132,7 +132,11 @@ function TrendingProductsCarousel({ products, favoriteIds, onOpen, onFavorite }:
   return (
     <section className="trending-section" aria-labelledby="trending-title">
       <div className="trending-heading">
-        <div><p className="eyebrow">Popular right now</p><h2 id="trending-title"><span className="trending-title-full">Trending products.</span><span className="trending-title-mobile">Trending.</span></h2></div>
+        <div>
+          <p className="eyebrow">Popular right now</p>
+          <h2 id="trending-title"><span className="trending-title-full">Trending products.</span><span className="trending-title-mobile">Trending.</span></h2>
+          <blockquote className="trending-quote"><p>Good tech earns its place.</p><footer>Useful picks people keep coming back for.</footer></blockquote>
+        </div>
       </div>
       <div className="trending-stage">
         <article className="trending-product-card" key={product.id}>
