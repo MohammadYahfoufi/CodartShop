@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Wired audio icon</title><desc id="desc">A pair of wired earbuds with an audio plug.</desc>
+  <defs><linearGradient id="g" x1="52" y1="45" x2="271" y2="280" gradientUnits="userSpaceOnUse"><stop stop-color="#168BFF"/><stop offset="1" stop-color="#8B35F5"/></linearGradient></defs>
+  <circle cx="160" cy="148" r="112" fill="url(#g)" opacity=".08"/>
+  <g fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M91 90c-22 0-35 16-35 37s15 35 37 35h12v-39c0-19-5-33-14-33Z"/><path d="M229 90c22 0 35 16 35 37s-15 35-37 35h-12v-39c0-19 5-33 14-33Z"/>
+    <path d="M81 161v23c0 51 29 61 67 66M239 161v23c0 36-15 53-43 61M148 250h48M196 232v36"/>
+  </g>
+  <rect x="188" y="264" width="16" height="37" rx="7" fill="url(#g)"/><path d="M192 274h8" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>

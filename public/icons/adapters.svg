@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Adapters icon</title><desc id="desc">A compact USB adapter connecting two port types.</desc>
+  <defs><linearGradient id="g" x1="45" y1="48" x2="276" y2="275" gradientUnits="userSpaceOnUse"><stop stop-color="#168BFF"/><stop offset="1" stop-color="#8B35F5"/></linearGradient></defs>
+  <circle cx="160" cy="160" r="116" fill="url(#g)" opacity=".08"/>
+  <g fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="74" y="103" width="172" height="114" rx="28"/><path d="M116 103V76h88v27M116 217v27h88v-27"/>
+    <rect x="101" y="137" width="50" height="45" rx="8"/><rect x="177" y="141" width="42" height="37" rx="14"/>
+  </g>
+  <path d="m164 125-23 39h20l-8 31 27-43h-20z" fill="url(#g)"/>
+</svg>

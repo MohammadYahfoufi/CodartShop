@@ -9,6 +9,7 @@ import { ConfirmDialog, ToastStack, type ToastMessage } from "@/components/feedb
 import type { AdminOrder, HeroSlide, OrderStatus, Product } from "@/lib/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { realtimeTopics } from "@/lib/realtime-topics";
+import { DEFAULT_PRODUCT_CATEGORY, PRODUCT_CATEGORIES } from "@/lib/product-categories";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -73,7 +74,7 @@ export function AdminDashboard({
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
-  const [category, setCategory] = useState("Accessories");
+  const [category, setCategory] = useState<string>(DEFAULT_PRODUCT_CATEGORY);
   const [stockQuantity, setStockQuantity] = useState("10");
   const [featured, setFeatured] = useState(false);
   const [specifications, setSpecifications] = useState("");
@@ -136,7 +137,7 @@ export function AdminDashboard({
     setTitle("");
     setDescription("");
     setPrice("");
-    setSalePrice(""); setCategory("Accessories"); setStockQuantity("10"); setFeatured(false); setSpecifications("");
+    setSalePrice(""); setCategory(DEFAULT_PRODUCT_CATEGORY); setStockQuantity("10"); setFeatured(false); setSpecifications("");
     setImages([]);
     setPreviews([]);
     setStatus("");
@@ -148,7 +149,7 @@ export function AdminDashboard({
     setDescription(product.description);
     setPrice(String(product.price));
     setSalePrice(product.sale_price == null ? "" : String(product.sale_price));
-    setCategory(product.category ?? "Accessories");
+    setCategory(product.category ?? DEFAULT_PRODUCT_CATEGORY);
     setStockQuantity(String(product.stock_quantity ?? 0));
     setFeatured(Boolean(product.featured));
     setSpecifications(Object.entries(product.specifications ?? {}).map(([key, value]) => `${key}: ${value}`).join("\n"));
@@ -312,7 +313,7 @@ export function AdminDashboard({
           <form onSubmit={submit}>
             <label className="field"><span>Product title</span><input required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Arc Mechanical" /></label>
             <label className="field"><span>Description</span><textarea required maxLength={600} rows={5} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What makes this product worth considering?" /></label>
-            <div className="admin-field-grid"><label className="field"><span>Category</span><input required maxLength={80} value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Accessories" /></label><label className="field"><span>Stock quantity</span><input required min="0" step="1" type="number" value={stockQuantity} onChange={(event) => setStockQuantity(event.target.value)} /></label></div>
+            <div className="admin-field-grid"><label className="field"><span>Category</span><select required value={category} onChange={(event) => setCategory(event.target.value)}>{!PRODUCT_CATEGORIES.some((item) => item.value === category) && <option value={category}>{category} (existing)</option>}{PRODUCT_CATEGORIES.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label><label className="field"><span>Stock quantity</span><input required min="0" step="1" type="number" value={stockQuantity} onChange={(event) => setStockQuantity(event.target.value)} /></label></div>
             <div className="admin-field-grid"><label className="field"><span>Regular price (USD)</span><div className="price-input"><b>$</b><input required min="0" step="0.01" inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0.00" /></div></label><label className="field"><span>Sale price <small>optional</small></span><div className="price-input"><b>$</b><input min="0" step="0.01" inputMode="decimal" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="0.00" /></div></label></div>
             <label className="admin-check-field"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} /><span>Show this product in the Trending carousel</span></label>
             <label className="field"><span>Specifications <small>one “Name: Value” per line</small></span><textarea rows={5} value={specifications} onChange={(event) => setSpecifications(event.target.value)} placeholder={"Power: 65W\nWarranty: 1 year\nColor: Black"} /></label>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Car accessories icon</title><desc id="desc">A phone secured in an adjustable dashboard car holder.</desc>
+  <defs><linearGradient id="g" x1="48" y1="42" x2="274" y2="282" gradientUnits="userSpaceOnUse"><stop stop-color="#168BFF"/><stop offset="1" stop-color="#8B35F5"/></linearGradient></defs>
+  <circle cx="160" cy="154" r="116" fill="url(#g)" opacity=".08"/>
+  <g fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="108" y="54" width="104" height="150" rx="24"/><path d="M137 178h46M160 204v30M160 234c-45 0-70 10-70 28h140c0-18-25-28-70-28Z"/>
+    <path d="M108 103H83v52h25M212 103h25v52h-25"/>
+  </g>
+  <circle cx="160" cy="77" r="5" fill="url(#g)"/>
+  <path d="M132 127h56" stroke="url(#g)" stroke-width="8" stroke-linecap="round" opacity=".55"/>
+</svg>

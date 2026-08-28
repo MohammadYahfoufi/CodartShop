@@ -22,6 +22,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { deliveryAreas, getDeliveryArea, getPaymentMethod, paymentMethods } from "@/lib/checkout";
 import { realtimeTopics } from "@/lib/realtime-topics";
 import { matchesProductSearch } from "@/lib/product-search";
+import { PRODUCT_CATEGORIES } from "@/lib/product-categories";
 import {
   CART_KEY,
   FAVORITES_KEY,
@@ -100,49 +101,75 @@ function ProductCartControl({ product, quantity, onAdd, onChange }: { product: P
       <button type="button" data-analytics="add_to_cart" onClick={() => onChange(1)} disabled={quantity >= stock} aria-label={`Add one more ${product.title}`}><PlusIcon /></button>
     </div>;
   }
-  return <button type="button" data-analytics="add_to_cart" onClick={() => onAdd(product)} disabled={stock <= 0} aria-label={`Add ${product.title} to cart`}>{stock <= 0 ? "Out of stock" : "Add to cart"}<PlusIcon /></button>;
+  return <button type="button" data-analytics="add_to_cart" onClick={() => onAdd(product)} disabled={stock <= 0} aria-label={`Add ${product.title} to cart`}>{stock <= 0 ? "Out of stock" : <>Add<span className="add-to-cart-long-label"> to cart</span></>}<PlusIcon /></button>;
 }
 
-function TrendingProductsCarousel({ products, cart, favoriteIds, onOpen, onAdd, onQuantityChange, onFavorite }: { products: Product[]; cart: CartItem[]; favoriteIds: string[]; onOpen: (product: Product) => void; onAdd: (product: Product) => void; onQuantityChange: (id: string, amount: number) => void; onFavorite: (id: string) => void }) {
-  const trackRef = useRef<HTMLDivElement>(null);
+function TrendingProductsCarousel({ products, favoriteIds, onOpen, onFavorite }: { products: Product[]; favoriteIds: string[]; onOpen: (product: Product) => void; onFavorite: (id: string) => void }) {
+  const [active, setActive] = useState(0);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastSwipeAtRef = useRef(0);
+
+  useEffect(() => {
+    if (products.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % products.length), 4800);
+    return () => window.clearInterval(timer);
+  }, [products.length]);
+
+  useEffect(() => {
+    if (active >= products.length) setActive(0);
+  }, [active, products.length]);
 
   function move(direction: -1 | 1) {
-    trackRef.current?.scrollBy({ left: direction * Math.max(300, trackRef.current.clientWidth * 0.78), behavior: "smooth" });
+    setActive((current) => (current + direction + products.length) % products.length);
   }
 
   if (!products.length) return null;
+  const product = products[Math.min(active, products.length - 1)];
+  const isFavorite = favoriteIds.includes(product.id);
+  const isOnSale = product.sale_price != null && product.sale_price < product.price;
 
   return (
     <section className="trending-section" aria-labelledby="trending-title">
       <div className="trending-heading">
-        <div><p className="eyebrow">Popular right now</p><h2 id="trending-title">Trending products.</h2></div>
+        <div><p className="eyebrow">Popular right now</p><h2 id="trending-title"><span className="trending-title-full">Trending products.</span><span className="trending-title-mobile">Trending.</span></h2></div>
         {products.length > 1 && <div className="trending-controls"><button type="button" onClick={() => move(-1)} aria-label="Show previous trending products"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next trending products"><ArrowIcon /></button></div>}
       </div>
-      <div className="trending-track" ref={trackRef}>
-        {products.map((product, index) => {
-          const isFavorite = favoriteIds.includes(product.id);
-          const quantityInCart = cart.find((item) => item.id === product.id)?.quantity ?? 0;
-          return <article className="product-card trending-product-card" key={product.id}>
-            <div className="product-media">
-              <ProductVisual src={product.image_url} alt={product.title} priority={index < 2} />
-              <span className="product-index">{String(index + 1).padStart(2, "0")}</span>
-              <div className="product-badges">{product.sale_price != null && product.sale_price < product.price && <span className="sale-badge">Sale {Math.round((1 - product.sale_price / product.price) * 100)}%</span>}{(product.stock_quantity ?? 10) <= 0 && <span className="stock-badge">Out of stock</span>}</div>
-              <button type="button" data-analytics="favorite_product" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => onFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
-            </div>
-            <div className="product-card-body">
-              <button type="button" className="product-title-button" data-analytics="open_product" onClick={() => onOpen(product)}><h3>{product.title}</h3></button>
-              {product.category && <span className="product-category">{product.category}</span>}
-              <p>{product.description}</p>
-              <div className="product-action">
-                <strong className={product.sale_price != null && product.sale_price < product.price ? "sale-price" : ""}>{product.sale_price != null && product.sale_price < product.price && <del>{money.format(product.price)}</del>}{money.format(productPrice(product))}</strong>
-                <ProductCartControl product={product} quantity={quantityInCart} onAdd={onAdd} onChange={(amount) => onQuantityChange(product.id, amount)} />
+      <div className="trending-stage">
+        <article className="trending-product-card" key={product.id}>
+          <button type="button" className="trending-banner-open" data-analytics="open_product" onTouchStart={(event) => { const touch = event.touches[0]; if (touch) swipeStartRef.current = { x: touch.clientX, y: touch.clientY }; }} onTouchEnd={(event) => { const start = swipeStartRef.current; const touch = event.changedTouches[0]; swipeStartRef.current = null; if (!start || !touch) return; const distanceX = touch.clientX - start.x; const distanceY = touch.clientY - start.y; if (Math.abs(distanceX) < 30 || Math.abs(distanceX) <= Math.abs(distanceY) * 1.15) return; lastSwipeAtRef.current = Date.now(); move(distanceX < 0 ? 1 : -1); }} onTouchCancel={() => { swipeStartRef.current = null; }} onClick={() => { if (Date.now() - lastSwipeAtRef.current < 500) return; onOpen(product); }} aria-label={`View ${product.title}`}>
+            <div className="trending-banner-media">
+              <div className="trending-banner-image"><ProductVisual src={product.image_url} alt={product.title} priority /></div>
+              <div className="trending-banner-badges"><span>{product.category ?? "Featured"}</span>{isOnSale && <span className="is-sale">Sale {Math.round((1 - product.sale_price! / product.price) * 100)}%</span>}{(product.stock_quantity ?? 10) <= 0 && <span className="is-out">Out of stock</span>}</div>
+              <div className="trending-banner-copy">
+                <div className="trending-banner-title"><h3>{product.title}</h3></div>
+                <div className="trending-banner-action">
+                  <strong className={isOnSale ? "is-on-sale" : ""}>{isOnSale && <del>{money.format(product.price)}</del>}<span>{money.format(productPrice(product))}</span></strong>
+                  <span className="trending-banner-view">View</span>
+                </div>
               </div>
             </div>
-          </article>;
-        })}
+          </button>
+          <button type="button" data-analytics="favorite_product" className={`favorite-button ${isFavorite ? "is-active" : ""}`} onClick={() => onFavorite(product.id)} aria-label={`${isFavorite ? "Remove" : "Add"} ${product.title} ${isFavorite ? "from" : "to"} favorites`}><HeartIcon filled={isFavorite} /></button>
+        </article>
+        {products.length > 1 && <div className="trending-dots" aria-label="Choose a trending product">{products.map((item, index) => <button type="button" className={index === active ? "is-active" : ""} onClick={() => setActive(index)} aria-label={`Show ${item.title}`} key={item.id} />)}</div>}
       </div>
     </section>
   );
+}
+
+function CategoryExplorer({ activeCategory, onSelect }: { activeCategory: string; onSelect: (category: string) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  function move(direction: -1 | 1) {
+    trackRef.current?.scrollBy({ left: direction * Math.max(280, trackRef.current.clientWidth * .72), behavior: "smooth" });
+  }
+
+  return <section className="category-explorer" aria-labelledby="category-explorer-title">
+    <div className="category-explorer-heading"><div><p className="eyebrow">Find your fit</p><h2 id="category-explorer-title">Shop by category.</h2></div><div className="category-explorer-actions"><button type="button" className="category-view-all" onClick={() => onSelect("")}>View all</button><button type="button" onClick={() => move(-1)} aria-label="Show previous categories"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next categories"><ArrowIcon /></button></div></div>
+    <div className="category-explorer-track" ref={trackRef}>
+      {PRODUCT_CATEGORIES.map((item) => <button type="button" className={`category-explorer-card ${activeCategory === item.value ? "is-active" : ""}`} aria-pressed={activeCategory === item.value} onClick={() => onSelect(item.value)} key={item.value}><span><Image src={item.image} alt="" width={320} height={320} unoptimized /></span><strong>{item.label}</strong></button>)}
+    </div>
+  </section>;
 }
 
 export function Storefront({
@@ -460,6 +487,13 @@ export function Storefront({
     });
   }
 
+  function selectCategory(nextCategory: string) {
+    setCategory(nextCategory);
+    setQuery("");
+    setFiltersOpen(false);
+    requestAnimationFrame(() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
   function changeQuantity(id: string, amount: number) {
     setCart((items) =>
       items
@@ -600,7 +634,9 @@ export function Storefront({
           </section>
         ) : <HeroCarousel slides={heroSlides} settings={settings} />}
 
-        {filter === "all" && <TrendingProductsCarousel products={trendingProducts} cart={cart} favoriteIds={favoriteIds} onOpen={setSelectedProduct} onAdd={addToCart} onQuantityChange={changeQuantity} onFavorite={toggleFavorite} />}
+        {filter === "all" && <TrendingProductsCarousel products={trendingProducts} favoriteIds={favoriteIds} onOpen={setSelectedProduct} onFavorite={toggleFavorite} />}
+
+        {filter === "all" && <CategoryExplorer activeCategory={category} onSelect={selectCategory} />}
 
         <section className={`products-section ${filter === "favorites" ? "saved-products-section" : ""}`} id="products">
           <div className="section-heading">
@@ -640,7 +676,7 @@ export function Storefront({
             {filtersOpen && <div className="catalog-controls" id="catalog-filter-menu" aria-label="Catalog filters">
             <div className="category-filters">
               <button type="button" className={!category ? "is-active" : ""} onClick={() => setCategory("")}>All</button>
-              {(productPage.categories ?? []).map((item) => <button type="button" className={category === item ? "is-active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}
+              {[...new Set([...PRODUCT_CATEGORIES.map((item) => item.value), ...(productPage.categories ?? [])])].map((item) => <button type="button" className={category === item ? "is-active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}
             </div>
             <div className="catalog-selects">
               <label><span className="sr-only">Trending filter</span><select value={featuredOnly ? "featured" : "all"} onChange={(event) => setFeaturedOnly(event.target.value === "featured")}><option value="all">All products</option><option value="featured">Trending only</option></select></label>
