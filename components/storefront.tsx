@@ -165,7 +165,7 @@ function CategoryExplorer({ activeCategory, onSelect }: { activeCategory: string
   }
 
   return <section className="category-explorer" aria-labelledby="category-explorer-title">
-    <div className="category-explorer-heading"><div><p className="eyebrow">Find your fit</p><h2 id="category-explorer-title">Shop by category.</h2></div><div className="category-explorer-actions"><button type="button" className="category-view-all" onClick={() => onSelect("")}>View all</button><button type="button" onClick={() => move(-1)} aria-label="Show previous categories"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next categories"><ArrowIcon /></button></div></div>
+    <div className="category-explorer-heading"><div><p className="eyebrow">Find your fit</p><h2 id="category-explorer-title"><span className="category-title-full">Shop by category.</span><span className="category-title-mobile">Categories</span></h2></div><div className="category-explorer-actions"><button type="button" className="category-view-all" onClick={() => onSelect("")}>View all</button><button type="button" onClick={() => move(-1)} aria-label="Show previous categories"><ArrowIcon /></button><button type="button" onClick={() => move(1)} aria-label="Show next categories"><ArrowIcon /></button></div></div>
     <div className="category-explorer-track" ref={trackRef}>
       {PRODUCT_CATEGORIES.map((item) => <button type="button" className={`category-explorer-card ${activeCategory === item.value ? "is-active" : ""}`} aria-pressed={activeCategory === item.value} onClick={() => onSelect(item.value)} key={item.value}><span><Image src={item.image} alt="" width={320} height={320} /></span><strong>{item.label}</strong></button>)}
     </div>
@@ -204,12 +204,43 @@ export function Storefront({
   const [productsLoading, setProductsLoading] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderError, setOrderError] = useState("");
+  const [headerVisible, setHeaderVisible] = useState(true);
   const visitorIdRef = useRef("");
   const userIdRef = useRef("");
   const cartStorageKeyRef = useRef(CART_KEY);
   const favoritesStorageKeyRef = useRef(FAVORITES_KEY);
   const searchRequestRef = useRef(0);
   const searchMountedRef = useRef(false);
+  const lastScrollYRef = useRef(0);
+
+  useEffect(() => {
+    lastScrollYRef.current = window.scrollY;
+    let frame = 0;
+
+    const updateHeader = () => {
+      const currentScrollY = Math.max(window.scrollY, 0);
+      const scrollChange = currentScrollY - lastScrollYRef.current;
+
+      if (currentScrollY < 80 || scrollChange < -2) {
+        setHeaderVisible(true);
+      } else if (currentScrollY > 120 && scrollChange > 4) {
+        setHeaderVisible(false);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+      frame = 0;
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateHeader);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -582,7 +613,7 @@ export function Storefront({
 
   return (
     <div className="site-shell" style={{ "--product-image-background": settings.product_background_color } as CSSProperties}>
-      <header className="site-header">
+      <header className={`site-header ${headerVisible ? "is-visible" : "is-hidden"}`}>
         <Link href="/" className="brand header-brand" aria-label={`${settings.site_name} home`}>
           <Image className="header-brand-logo" src={settings.site_logo_url} alt={settings.site_name} width={512} height={512} priority />
         </Link>
