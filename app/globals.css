@@ -6314,7 +6314,7 @@ a {
     overflow-y: auto;
   }
 
-  .account-trigger>span:last-child {
+  .account-trigger>span:not(.account-avatar) {
     display: none;
   }
 
